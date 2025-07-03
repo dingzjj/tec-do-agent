@@ -7,3 +7,5 @@ history/*
 *.pyc
 *.pyo
 *.pyd
+temp/*
+temp

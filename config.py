@@ -28,13 +28,10 @@ class Config:
                 logging.info(f"成功加载配置文件: {self.config_file}")
             else:
                 logging.warning(f"配置文件 {self.config_file} 不存在，使用默认配置")
-                self.config_data = self.get_default_config()
         except json.JSONDecodeError as e:
             logging.error(f"配置文件格式错误: {e}")
-            self.config_data = self.get_default_config()
         except Exception as e:
             logging.error(f"加载配置文件时发生错误: {e}")
-            self.config_data = self.get_default_config()
 
     def save_config(self) -> bool:
         """保存配置到文件"""
@@ -166,55 +163,6 @@ class Config:
             errors.append(f"不支持的语言设置: {language}")
 
         return errors
-
-    def get_default_config(self) -> Dict[str, Any]:
-        """获取默认配置"""
-        return {
-            "openai_api_key": "",
-            "openai_api_base": "",
-            "default_model": "gpt-3.5-turbo",
-            "language": "auto",
-            "users": [],
-            "local_embedding": False,
-            "hide_local_models": True,
-            "hide_history_when_not_logged_in": False,
-            "chat_name_method_index": 2,
-            "bot_avatar": "default",
-            "user_avatar": "default",
-            "websearch_engine": "duckduckgo",
-            "serper_search_api_key": "",
-            "local_models": {},
-            "multi_api_key": False,
-            "api_key_list": [],
-            "server_name": "0.0.0.0",
-            "server_port": 7860,
-            "share": False,
-            "autobrowser": False,
-            "log_dir": "./log",
-            # 嵌套配置示例
-            "database": {
-                "host": "localhost",
-                "port": 5432,
-                "name": "ad_agent",
-                "user": "admin"
-            },
-            "api": {
-                "openai": {
-                    "model": "gpt-3.5-turbo",
-                    "max_tokens": 2048,
-                    "temperature": 0.7
-                },
-                "search": {
-                    "engine": "duckduckgo",
-                    "max_results": 10
-                }
-            },
-            "ui": {
-                "theme": "light",
-                "language": "zh_CN",
-                "auto_save": True
-            }
-        }
 
     def reload(self) -> None:
         """重新加载配置文件"""

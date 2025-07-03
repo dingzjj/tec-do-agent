@@ -23,5 +23,6 @@
         "model_name": "gpt-3.5-turbo",
         "api_key": "sk-NNnhRUi2gAuWV1GcEosAfvUlc5CYYPGsw9sP87TgM8U3qOT8",
         "base_url": "https://api.nuwaapi.com/v1"
-    }
+    },
+    "tavily_api_key": "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"
 }
