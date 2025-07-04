@@ -5,7 +5,7 @@ import gradio as gr
 from gradio.utils import validate_url
 from gradio_client import utils as client_utils
 
-from src.presets import tecdo_path, assets_path
+from src.presets import chuanhu_path, assets_path
 from src.utils import convert_bot_before_marked, convert_user_before_marked
 
 
@@ -27,7 +27,7 @@ def postprocess(
             message_pair, (tuple, list)
         ), f"Expected a list of lists or list of tuples. Received: {message_pair}"
         assert (
-            len(message_pair) == 2
+                len(message_pair) == 2
         ), f"Expected a list of lists of length 2 or list of tuples of length 2. Received: {message_pair}"
 
         processed_messages.append(
@@ -69,8 +69,7 @@ def postprocess_chat_messages(
             chat_message = convert_user_before_marked(chat_message)
         return chat_message
     else:
-        raise ValueError(
-            f"Invalid message for Chatbot component: {chat_message}")
+        raise ValueError(f"Invalid message for Chatbot component: {chat_message}")
 
 
 def add_classes_to_gradio_component(comp):
@@ -79,8 +78,7 @@ def add_classes_to_gradio_component(comp):
     code from stable-diffusion-webui <AUTOMATIC1111/stable-diffusion-webui>
     """
 
-    comp.elem_classes = [
-        f"gradio-{comp.get_block_name()}", *(comp.elem_classes or [])]
+    comp.elem_classes = [f"gradio-{comp.get_block_name()}", *(comp.elem_classes or [])]
 
     if getattr(comp, 'multiselect', False):
         comp.elem_classes.append('multiselect')
@@ -109,7 +107,7 @@ gr.blocks.BlockContext.__init__ = BlockContext_init
 
 
 def get_html(filename):
-    path = os.path.join(tecdo_path, "assets", "html", filename)
+    path = os.path.join(chuanhu_path, "assets", "html", filename)
     if os.path.exists(path):
         with open(path, encoding="utf8") as file:
             return file.read()
@@ -118,7 +116,7 @@ def get_html(filename):
 
 def webpath(fn):
     if fn.startswith(assets_path):
-        web_path = os.path.relpath(fn, tecdo_path).replace('\\', '/')
+        web_path = os.path.relpath(fn, chuanhu_path).replace('\\', '/')
     else:
         web_path = os.path.abspath(fn)
     return f'file={web_path}?{os.path.getmtime(fn)}'
@@ -129,11 +127,10 @@ ScriptFile = namedtuple("ScriptFile", ["basedir", "filename", "path"])
 
 def list_scripts(scriptdirname, extension):
     scripts_list = []
-    scripts_dir = os.path.join(tecdo_path, "assets", scriptdirname)
+    scripts_dir = os.path.join(chuanhu_path, "assets", scriptdirname)
     if os.path.exists(scripts_dir):
         for filename in sorted(os.listdir(scripts_dir)):
-            scripts_list.append(ScriptFile(
-                assets_path, filename, os.path.join(scripts_dir, filename)))
+            scripts_list.append(ScriptFile(assets_path, filename, os.path.join(scripts_dir, filename)))
     scripts_list = [x for x in scripts_list if
                     os.path.splitext(x.path)[1].lower() == extension and os.path.isfile(x.path)]
     return scripts_list
@@ -172,8 +169,7 @@ def reload_javascript():
 
     def template_response(*args, **kwargs):
         res = GradioTemplateResponseOriginal(*args, **kwargs)
-        res.body = res.body.replace(
-            b'</head>', f'{meta}{js}</head>'.encode("utf8"))
+        res.body = res.body.replace(b'</head>', f'{meta}{js}</head>'.encode("utf8"))
         res.body = res.body.replace(b'</body>', f'{css}</body>'.encode("utf8"))
         res.init_headers()
         return res

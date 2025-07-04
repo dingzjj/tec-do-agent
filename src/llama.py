@@ -6,7 +6,7 @@
 int8 gptq model need: pip install optimum auto-gptq
 """
 
-from loguru import logger
+from config import logger
 
 from src.base_model import BaseLLMModel
 from src.presets import LOCAL_MODELS
@@ -22,8 +22,10 @@ class LLaMAClient(BaseLLMModel):
             model_path = LOCAL_MODELS[model_name]
         else:
             model_path = model_name
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path, legacy=True, use_fast=False)
-        self.model = AutoModelForCausalLM.from_pretrained(model_path, device_map='auto', torch_dtype='auto').eval()
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_path, legacy=True, use_fast=False)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_path, device_map='auto', torch_dtype='auto').eval()
         logger.info(f"Model loaded from {model_path}")
         self.stop_str = self.tokenizer.eos_token or "</s>"
 
@@ -36,7 +38,8 @@ class LLaMAClient(BaseLLMModel):
             elif conv["role"] == "user":
                 messages.append({'role': 'user', 'content': conv["content"]})
             else:
-                messages.append({'role': 'assistant', 'content': conv["content"]})
+                messages.append(
+                    {'role': 'assistant', 'content': conv["content"]})
         input_ids = self.tokenizer.apply_chat_template(
             conversation=messages,
             tokenize=True,
@@ -54,7 +57,8 @@ class LLaMAClient(BaseLLMModel):
             top_p=self.top_p,
             temperature=self.temperature,
         )
-        response = self.tokenizer.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True)
+        response = self.tokenizer.decode(
+            output_ids[0][input_ids.shape[1]:], skip_special_tokens=True)
 
         return response, len(response)
 

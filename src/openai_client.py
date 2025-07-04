@@ -16,7 +16,7 @@ from io import BytesIO
 import gradio as gr
 import requests
 from PIL import Image
-from loguru import logger
+from config import logger
 
 from src import shared, config
 from src.base_model import BaseLLMModel
@@ -466,7 +466,8 @@ class OpenAIVisionClient(BaseLLMModel):
             last_day_of_month = get_last_day_of_month(
                 curr_time).strftime("%Y-%m-%d")
             first_day_of_month = curr_time.replace(day=1).strftime("%Y-%m-%d")
-            usage_url = f"{shared.state.usage_api_url}?start_date={first_day_of_month}&end_date={last_day_of_month}"
+            usage_url = f"{shared.state.usage_api_url}?start_date={
+                first_day_of_month}&end_date={last_day_of_month}"
             try:
                 usage_data = self._get_billing_data(usage_url)
             except Exception as e:
@@ -569,7 +570,8 @@ class OpenAIVisionClient(BaseLLMModel):
             return data
         else:
             raise Exception(
-                f"API request failed with status code {response.status_code}: {response.text}"
+                f"API request failed with status code {
+                    response.status_code}: {response.text}"
             )
 
     def set_key(self, new_access_key):

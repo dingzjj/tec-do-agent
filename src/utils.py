@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 
+from agent.agent import SEOAgent
 import csv
 import datetime
 import getpass
@@ -19,7 +20,7 @@ import gradio as gr
 import pandas as pd
 import requests
 import tiktoken
-from loguru import logger
+from config import logger
 from markdown import markdown
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -101,8 +102,12 @@ def predict(user_question: str, chatbot, use_streaming_checkbox, language_select
     # 提取纯文本对话历史
     chat_history = extract_chat_history(chatbot)
     # TODO 使用agent来进行回复
-    chatbot += [(user_question, chat_with_openai_in_azure(
-        system_prompt=f"用{language_select_dropdown}回答用户的问题", prompt=user_question))]
+
+    # 调用agent
+    agent = SEOAgent()
+    agent.predict(user_question, chat_history)
+    # chatbot += [(user_question, chat_with_openai_in_azure(
+    #     system_prompt=f"用{language_select_dropdown}回答用户的问题", prompt=user_question))]
     return chatbot
 
 
@@ -229,7 +234,8 @@ def dislike(current_model, *args):
 def count_token(input_str):
     encoding = tiktoken.get_encoding("cl100k_base")
     if type(input_str) == dict:
-        input_str = f"role: {input_str['role']}, content: {input_str['content']}"
+        input_str = f"role: {input_str['role']
+                             }, content: {input_str['content']}"
     length = len(encoding.encode(input_str))
     return length
 
@@ -340,7 +346,8 @@ def convert_bot_before_marked(chat_message):
     if '<div class="md-message">' in chat_message:
         return chat_message
     else:
-        raw = f'<div class="raw-message hideM">{clip_rawtext(chat_message)}</div>'
+        raw = f'<div class="raw-message hideM">{
+            clip_rawtext(chat_message)}</div>'
         # really_raw = f'{START_OF_OUTPUT_MARK}<div class="really-raw hideM">{clip_rawtext(chat_message, need_escape=False)}\n</div>{END_OF_OUTPUT_MARK}'
 
         code_block_pattern = re.compile(r"```(.*?)(?:```|$)", re.DOTALL)

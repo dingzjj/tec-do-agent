@@ -8,7 +8,7 @@ from src.models import get_help_model
 from config import conf, logger
 
 
-def load_app(user_name):
+def load_app(user_name, chatbot):
     # if hasattr(request, "username") and request.username:
     #     logger.info(f"Get User Name: {request.username}")
     #     user_info, user_name = gr.Markdown.update(
@@ -22,7 +22,8 @@ def load_app(user_name):
     model_name = conf.get("help_model.model_name", "")
     current_help_model = get_help_model(
         model_name=model_name, user_name=user_name)
-    return current_help_model
+    chatbot += [["输入链接或者在旁边输入商品信息", ""]]
+    return current_help_model, chatbot
 
 # 参考以下
 

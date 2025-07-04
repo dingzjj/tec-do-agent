@@ -5,7 +5,7 @@
 """
 import platform
 
-from loguru import logger
+from config import logger
 
 from src.base_model import BaseLLMModel
 from src.presets import LOCAL_MODELS
@@ -22,11 +22,13 @@ class ChatGLMClient(BaseLLMModel):
             model_path = LOCAL_MODELS[model_name]
         else:
             model_path = model_name
-        self.CHATGLM_TOKENIZER = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        self.CHATGLM_TOKENIZER = AutoTokenizer.from_pretrained(
+            model_path, trust_remote_code=True)
         quantified = False
         if "int4" in model_name:
             quantified = True
-        model = AutoModel.from_pretrained(model_path, trust_remote_code=True, device_map='auto', torch_dtype='auto')
+        model = AutoModel.from_pretrained(
+            model_path, trust_remote_code=True, device_map='auto', torch_dtype='auto')
         if torch.cuda.is_available():
             logger.info("CUDA is available, using CUDA")
             model = model.half().cuda()
@@ -51,7 +53,8 @@ class ChatGLMClient(BaseLLMModel):
         history = [x["content"] for x in self.history]
         query = history.pop()
         logger.debug(f"{history}")
-        assert len(history) % 2 == 0, f"History should be even length. current history is: {history}"
+        assert len(history) % 2 == 0, f"History should be even length. current history is: {
+            history}"
         history = [[history[i], history[i + 1]]
                    for i in range(0, len(history), 2)]
         return history, query

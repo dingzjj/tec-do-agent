@@ -19,6 +19,41 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import re
 
 
+def capitalize_title(title: str) -> str:
+    """
+    将标题中每个词的首个字符大写
+    处理特殊情况：保持某些词的小写（如 of, and, the 等介词和冠词）
+    """
+    # 定义不需要大写的词（介词、冠词、连词等）
+    lowercase_words = {'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if',
+                       'in', 'is', 'it', 'of', 'on', 'or', 'the', 'to', 'up', 'with', 'yet'}
+
+    # 分割标题为单词
+    words = title.split()
+    capitalized_words = []
+
+    for i, word in enumerate(words):
+        # 清理单词（去除标点符号）
+        clean_word = ''.join(c for c in word if c.isalnum())
+
+        # 如果是第一个词或最后一个词，或者不在小写词列表中，或者长度大于3，则大写
+        if (i == 0 or i == len(words) - 1 or
+            clean_word.lower() not in lowercase_words or
+                len(clean_word) > 3):  # 长度大于3的词通常需要大写
+            # 大写第一个字符，保持其他字符不变
+            if word:
+                capitalized_word = word[0].upper(
+                ) + word[1:] if len(word) > 0 else word
+                capitalized_words.append(capitalized_word)
+            else:
+                capitalized_words.append(word)
+        else:
+            # 保持小写
+            capitalized_words.append(word)
+
+    return ' '.join(capitalized_words)
+
+
 async def extracted_content_in_lazada_by_css_selector(url, css_schema):
     """
     css_schema参考schema = {

@@ -4,7 +4,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 import commentjson as json
-from loguru import logger
+from config import logger
 
 from src import shared, presets
 
@@ -20,7 +20,8 @@ if config:
     logger.info(f"加载配置文件成功, config: {config}")
 language = config.get("language", "") or os.environ.get("LANGUAGE", "auto")
 
-hide_history_when_not_logged_in = config.get("hide_history_when_not_logged_in", False)
+hide_history_when_not_logged_in = config.get(
+    "hide_history_when_not_logged_in", False)
 show_api_billing = config.get("show_api_billing", False)
 # 选择对话名称的方法。0: 使用日期时间命名；1: 使用第一条提问命名，2: 使用模型自动总结
 chat_name_method_index = config.get("chat_name_method_index", 2)
@@ -34,7 +35,8 @@ else:
     if local_models:
         presets.LOCAL_MODELS = local_models
         logger.info(f"已设置本地模型：{local_models}")
-        presets.MODELS = presets.ONLINE_MODELS + list(presets.LOCAL_MODELS.keys())
+        presets.MODELS = presets.ONLINE_MODELS + \
+            list(presets.LOCAL_MODELS.keys())
 if "available_models" in config:
     presets.MODELS = config["available_models"]
     logger.info(f"已设置可用模型：{config['available_models']}")
@@ -68,6 +70,7 @@ if api_host is not None:
 # 处理 api-key 以及 允许的用户列表
 my_api_key = config.get("openai_api_key", os.environ.get("OPENAI_API_KEY", ""))
 
+
 @contextmanager
 def retrieve_openai_api(api_key=None):
     if api_key is None:
@@ -89,7 +92,8 @@ os.environ["HTTPS_PROXY"] = ""
 local_embedding = config.get("local_embedding", False)  # 是否使用本地embedding
 chunk_size = config.get("chunk_size", 500)
 chunk_overlap = config.get("chunk_overlap", 50)
-hf_emb_model_name = config.get("hf_emb_model_name", "shibing624/text2vec-base-multilingual")
+hf_emb_model_name = config.get(
+    "hf_emb_model_name", "shibing624/text2vec-base-multilingual")
 
 
 @contextmanager
@@ -179,7 +183,8 @@ default_model = config.get("default_model", "")
 try:
     presets.DEFAULT_MODEL = presets.MODELS.index(default_model)
 except ValueError:
-    logger.error("你填写的默认模型" + default_model + "不存在！请从下面的列表中挑一个填写：" + str(presets.MODELS))
+    logger.error("你填写的默认模型" + default_model +
+                 "不存在！请从下面的列表中挑一个填写：" + str(presets.MODELS))
 
 share = config.get("share", False)
 
@@ -197,10 +202,15 @@ elif user_avatar == "default":
 
 websearch_engine = config.get("websearch_engine", "duckduckgo")
 # 设置websearch engine api key
-bing_search_api_key = config.get("bing_search_api_key", "") or os.environ.get("BING_SEARCH_API_KEY", "")
-google_search_api_key = config.get("google_search_api_key", "") or os.environ.get("GOOGLE_SEARCH_API_KEY", "")
-google_search_cx = config.get("google_search_cx", "") or os.environ.get("GOOGLE_SEARCH_CX", "")
-serper_search_api_key = config.get("serper_search_api_key", "") or os.environ.get("SERPER_SEARCH_API_KEY", "")
-searchapi_api_key = config.get("searchapi_api_key", "") or os.environ.get("SEARCHAPI_API_KEY", "")
+bing_search_api_key = config.get(
+    "bing_search_api_key", "") or os.environ.get("BING_SEARCH_API_KEY", "")
+google_search_api_key = config.get(
+    "google_search_api_key", "") or os.environ.get("GOOGLE_SEARCH_API_KEY", "")
+google_search_cx = config.get(
+    "google_search_cx", "") or os.environ.get("GOOGLE_SEARCH_CX", "")
+serper_search_api_key = config.get(
+    "serper_search_api_key", "") or os.environ.get("SERPER_SEARCH_API_KEY", "")
+searchapi_api_key = config.get(
+    "searchapi_api_key", "") or os.environ.get("SEARCHAPI_API_KEY", "")
 
 autobrowser = config.get("autobrowser", True)

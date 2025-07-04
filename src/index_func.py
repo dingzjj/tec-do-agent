@@ -4,7 +4,7 @@ from typing import List, Optional, Any
 
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from loguru import logger
+from config import logger
 from tqdm import tqdm
 
 from src.config import local_embedding, retrieve_proxy, chunk_overlap, chunk_size, hf_emb_model_name
@@ -47,7 +47,8 @@ class ChineseRecursiveTextSplitter(RecursiveCharacterTextSplitter):
             if keep_separator:
                 # The parentheses in the pattern keep the delimiters in the result.
                 _splits = re.split(f"({separator})", text)
-                splits = ["".join(i) for i in zip(_splits[0::2], _splits[1::2])]
+                splits = ["".join(i)
+                          for i in zip(_splits[0::2], _splits[1::2])]
                 if len(_splits) % 2 == 1:
                     splits += _splits[-1:]
             else:
@@ -72,8 +73,10 @@ class ChineseRecursiveTextSplitter(RecursiveCharacterTextSplitter):
                 new_separators = separators[i + 1:]
                 break
 
-        _separator = separator if self._is_separator_regex else re.escape(separator)
-        splits = self._split_text_with_regex_from_end(text, _separator, self._keep_separator)
+        _separator = separator if self._is_separator_regex else re.escape(
+            separator)
+        splits = self._split_text_with_regex_from_end(
+            text, _separator, self._keep_separator)
 
         # Now go merging things, recursively splitting longer texts.
         _good_splits = []
@@ -98,7 +101,8 @@ class ChineseRecursiveTextSplitter(RecursiveCharacterTextSplitter):
 
 
 def get_documents(file_paths):
-    text_splitter = ChineseRecursiveTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    text_splitter = ChineseRecursiveTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
     documents = []
     logger.debug("Loading documents...")
@@ -161,7 +165,8 @@ def get_documents(file_paths):
         if texts is not None:
             texts = text_splitter.split_documents(texts)
             documents.extend(texts)
-    logger.debug(f"Documents loaded. documents size: {len(documents)}, top3: {documents[:3]}")
+    logger.debug(f"Documents loaded. documents size: {
+                 len(documents)}, top3: {documents[:3]}")
     return documents
 
 
@@ -187,7 +192,8 @@ def construct_index(
         if os.environ.get("OPENAI_API_TYPE", "openai") == "openai":
             embeddings = OpenAIEmbeddings(
                 openai_api_base=shared.state.openai_api_base,
-                openai_api_key=os.environ.get("OPENAI_EMBEDDING_API_KEY", api_key)
+                openai_api_key=os.environ.get(
+                    "OPENAI_EMBEDDING_API_KEY", api_key)
             )
         else:
             embeddings = OpenAIEmbeddings(

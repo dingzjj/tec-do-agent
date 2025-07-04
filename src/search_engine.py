@@ -8,7 +8,7 @@ from itertools import islice
 
 import requests
 from fastapi import HTTPException
-from loguru import logger
+from config import logger
 
 # Search engine related. You don't really need to change this.
 BING_SEARCH_V7_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
@@ -85,9 +85,11 @@ def search_with_serper(query: str, subscription_key: str):
             else (REFERENCE_COUNT // 10 + 1) * 10
         ),
     })
-    headers = {"X-API-KEY": subscription_key, "Content-Type": "application/json"}
+    headers = {"X-API-KEY": subscription_key,
+               "Content-Type": "application/json"}
     logger.info(
-        f"{payload} {headers} {subscription_key} {query} {SERPER_SEARCH_ENDPOINT}"
+        f"{payload} {headers} {subscription_key} {
+            query} {SERPER_SEARCH_ENDPOINT}"
     )
     response = requests.post(
         SERPER_SEARCH_ENDPOINT,
@@ -103,7 +105,8 @@ def search_with_serper(query: str, subscription_key: str):
         # convert to the same format as bing/google
         contexts = []
         if json_content.get("knowledgeGraph"):
-            url = json_content["knowledgeGraph"].get("descriptionUrl") or json_content["knowledgeGraph"].get("website")
+            url = json_content["knowledgeGraph"].get(
+                "descriptionUrl") or json_content["knowledgeGraph"].get("website")
             snippet = json_content["knowledgeGraph"].get("description")
             if url and snippet:
                 contexts.append({
@@ -113,7 +116,8 @@ def search_with_serper(query: str, subscription_key: str):
                 })
         if json_content.get("answerBox"):
             url = json_content["answerBox"].get("url")
-            snippet = json_content["answerBox"].get("snippet") or json_content["answerBox"].get("answer")
+            snippet = json_content["answerBox"].get(
+                "snippet") or json_content["answerBox"].get("answer")
             if url and snippet:
                 contexts.append({
                     "name": json_content["answerBox"].get("title", ""),
@@ -121,7 +125,8 @@ def search_with_serper(query: str, subscription_key: str):
                     "snippet": snippet
                 })
         contexts += [
-            {"name": c["title"], "url": c["link"], "snippet": c.get("snippet", "")}
+            {"name": c["title"], "url": c["link"],
+                "snippet": c.get("snippet", "")}
             for c in json_content["organic"]
         ]
         return contexts[:REFERENCE_COUNT]
@@ -143,9 +148,11 @@ def search_with_searchapi(query: str, subscription_key: str):
             else (REFERENCE_COUNT // 10 + 1) * 10
         ),
     }
-    headers = {"Authorization": f"Bearer {subscription_key}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {subscription_key}",
+               "Content-Type": "application/json"}
     logger.info(
-        f"{payload} {headers} {subscription_key} {query} {SEARCHAPI_SEARCH_ENDPOINT}"
+        f"{payload} {headers} {subscription_key} {
+            query} {SEARCHAPI_SEARCH_ENDPOINT}"
     )
     response = requests.get(
         SEARCHAPI_SEARCH_ENDPOINT,
@@ -163,15 +170,18 @@ def search_with_searchapi(query: str, subscription_key: str):
 
         if json_content.get("answer_box"):
             if json_content["answer_box"].get("organic_result"):
-                title = json_content["answer_box"].get("organic_result").get("title", "")
-                url = json_content["answer_box"].get("organic_result").get("link", "")
+                title = json_content["answer_box"].get(
+                    "organic_result").get("title", "")
+                url = json_content["answer_box"].get(
+                    "organic_result").get("link", "")
             if json_content["answer_box"].get("type") == "population_graph":
                 title = json_content["answer_box"].get("place", "")
                 url = json_content["answer_box"].get("explore_more_link", "")
 
             title = json_content["answer_box"].get("title", "")
             url = json_content["answer_box"].get("link")
-            snippet = json_content["answer_box"].get("answer") or json_content["answer_box"].get("snippet")
+            snippet = json_content["answer_box"].get(
+                "answer") or json_content["answer_box"].get("snippet")
 
             if url and snippet:
                 contexts.append({
@@ -182,7 +192,8 @@ def search_with_searchapi(query: str, subscription_key: str):
 
         if json_content.get("knowledge_graph"):
             if json_content["knowledge_graph"].get("source"):
-                url = json_content["knowledge_graph"].get("source").get("link", "")
+                url = json_content["knowledge_graph"].get(
+                    "source").get("link", "")
 
             url = json_content["knowledge_graph"].get("website", "")
             snippet = json_content["knowledge_graph"].get("description")
@@ -195,7 +206,8 @@ def search_with_searchapi(query: str, subscription_key: str):
                 })
 
         contexts += [
-            {"name": c["title"], "url": c["link"], "snippet": c.get("snippet", "")}
+            {"name": c["title"], "url": c["link"],
+                "snippet": c.get("snippet", "")}
             for c in json_content["organic_results"]
         ]
 
@@ -228,7 +240,8 @@ def search_with_duckduckgo(query: str):
     try:
         from duckduckgo_search import DDGS
     except ImportError:
-        raise ImportError("Please install duckduckgo-search to use this search engine.")
+        raise ImportError(
+            "Please install duckduckgo-search to use this search engine.")
     contexts = []
     with DDGS() as ddgs:
         ddgs_gen = ddgs.text(query, backend="lite")

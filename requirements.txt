@@ -1,5 +1,5 @@
-gradio
-gradio_client
+gradio==3.43.2
+gradio_client==0.5.0
 gradio[oauth]
 tavily-python
 fastmcp
@@ -26,7 +26,7 @@ pydantic-core
 pydantic
 rank-bm25
 jieba
-loguru
+config
 openai
 unstructured
 google-cloud-aiplatform
@@ -35,4 +35,4 @@ selenium
 beautifulsoup4
 requests
 lxml
-e-commerce-toolkit==0.0.19 --index-url https://maven-public.tec-develop.cn/repository/pypi-public/simple/ --trusted-host maven-public.tec-develop.cn
+# e-commerce-toolkit==0.0.19 --index-url https://maven-public.tec-develop.cn/repository/pypi-public/simple/ --trusted-host maven-public.tec-develop.cn

@@ -8,15 +8,12 @@ import gradio as gr
 
 pwd_path = os.path.abspath(os.path.dirname(__file__))
 
-# 后面优化，使用翻译功能来实现
-
 
 class I18nAuto:
     def __init__(self):
         language = os.environ.get("LANGUAGE", "auto")
         if language == "auto":
-            # get the language code of the system (e.g. zh_CN)
-            language = locale.getdefaultlocale()[0]
+            language = locale.getdefaultlocale()[0]  # get the language code of the system (e.g. zh_CN)
         self.language_map = {}
         file_path = os.path.join(pwd_path, f'../locale/{language}.json')
         self.file_is_exists = os.path.isfile(file_path)
@@ -46,7 +43,7 @@ HISTORY_DIR = os.path.join(pwd_path, '../history')
 TEMPLATES_DIR = os.path.join(pwd_path, '../templates')
 
 # assert文件
-tecdo_path = os.path.dirname(pwd_path)
+chuanhu_path = os.path.dirname(pwd_path)
 assets_path = os.path.join(pwd_path, "../assets")
 favicon_path = os.path.join(pwd_path, "../assets/favicon.ico")
 
@@ -72,9 +69,9 @@ CONCURRENT_COUNT = 100  # 允许同时使用的用户数量
 SIM_K = 5
 INDEX_QUERY_TEMPRATURE = 1.0
 
-TITLE = i18n("Agent UI")
-DESCRIPTION = i18n(
-    "GitHub: [shibing624/chatgpt-webui](https://github.com/shibing624/chatgpt-webui)")
+TITLE = i18n("ChatGPT 🚀")
+
+DESCRIPTION = i18n("GitHub: [shibing624/chatgpt-webui](https://github.com/shibing624/chatgpt-webui)")
 
 ONLINE_MODELS = [
     "gpt-3.5-turbo",
@@ -128,7 +125,7 @@ REPLY_LANGUAGES = [
 HISTORY_NAME_METHODS = [
     i18n("根据日期时间"),
     i18n("第一条提问"),
-    i18n("模型自动总结"),
+    i18n("模型自动总结（消耗tokens）"),
 ]
 WEBSEARCH_PTOMPT_TEMPLATE = """\
 Web search results:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
+from src.presets import small_and_beautiful_theme
 import gradio as gr
 from config import logger, conf
-
 from src.config import (
     http_proxy,
     hide_history_when_not_logged_in,
@@ -22,7 +22,7 @@ from src.config import (
     autobrowser,
     update_doc_config,
 )
-from src.gradio_patch import reg_patch
+# from src.gradio_patch import reg_patch
 from src.overwrites import (
     postprocess,
     postprocess_chat_messages,
@@ -98,7 +98,7 @@ from src.utils import (
     set_language_by_country
 )
 from src.hook import load_app, reset, load_chat_history
-reg_patch()
+# reg_patch()
 
 gr.Chatbot._postprocess_chat_messages = postprocess_chat_messages
 gr.Chatbot.postprocess = postprocess
@@ -275,7 +275,8 @@ def load(user_name, user_info):
                                        show_label=True, interactive=True, elem_id="product_title", type="text")
                             gr.Textbox(placeholder="商品介绍", label="商品介绍",
                                        show_label=True, interactive=True, elem_id="product_description", type="text")
-
+                            gr.Textbox(placeholder="商品类别", label="商品类别",
+                                       show_label=True, interactive=True, elem_id="product_category", type="text")
                         with gr.Tab(label=i18n("参数")):
                             gr.Markdown(i18n("# ⚠️ 务必谨慎更改 "),
                                         elem_id="advanced-warning")
@@ -396,35 +397,7 @@ def load(user_name, user_info):
                                     value=REPLY_LANGUAGES[0],
                                     visible=False,
                                 )
-                        # with gr.Tab(i18n("网络")):
-                        #     gr.Markdown(
-                        #         i18n("⚠️ 为保证API-Key安全，请在配置文件`config.json`中修改网络设置"),
-                        #         elem_id="netsetting-warning")
-                        #     default_btn = gr.Button(i18n("🔙 恢复默认网络设置"))
-                        #     # 网络代理
-                        #     proxyTxt = gr.Textbox(
-                        #         show_label=True,
-                        #         placeholder=i18n("未设置代理..."),
-                        #         label=i18n("代理地址"),
-                        #         value=http_proxy,
-                        #         lines=1,
-                        #         interactive=False,
-                        #         # container=False,
-                        #         elem_classes="view-only-textbox no-container",
-                        #     )
-                            # changeProxyBtn = gr.Button(i18n("🔄 设置代理地址"))
 
-                            # 优先展示自定义的api_host
-                            # apihostTxt = gr.Textbox(
-                            #     show_label=True,
-                            #     placeholder="api.openai.com",
-                            #     label="OpenAI API-Host",
-                            #     value=api_host or API_HOST,
-                            #     lines=1,
-                            #     interactive=False,
-                            #     # container=False,
-                            #     elem_classes="view-only-textbox no-container",
-                            # )
                 with gr.Box(elem_id="web-config", visible=False):
                     gr.HTML(get_html('web_config.html').format(
                         enableCheckUpdate_config=False,
@@ -454,8 +427,8 @@ def load(user_name, user_info):
                         visible=False, elem_classes="invisible-btn", elem_id="history-select-btn")  # Not used
 
         # TODO : 应用加载后的第一个程序
-        demo.load(load_app, inputs=[user_name], outputs=[
-            current_help_model], api_name="load")
+        demo.load(load_app, inputs=[user_name, chatbot], outputs=[
+            current_help_model, chatbot], api_name="load")
 
         chatgpt_predict_args = dict(
             fn=predict,
@@ -493,17 +466,6 @@ def load(user_name, user_info):
         #     fn=billing_info, inputs=[current_help_model], outputs=[
         #         usageTxt], show_progress="hidden"
         # )
-
-        load_history_from_file_args = dict(
-            fn=load_chat_history,
-            inputs=[historySelectList, user_name],
-            outputs=[saveFileName,  chatbot],
-        )
-
-        refresh_history_args = dict(
-            fn=get_history_list, inputs=[
-                user_name], outputs=[historySelectList]
-        )
 
         auto_name_chat_history_args = dict(
             fn=auto_name_chat_history,
@@ -605,17 +567,24 @@ def load(user_name, user_info):
             [],
             show_progress="full",
         )
-        historyRefreshBtn.click(**refresh_history_args)
+        historyRefreshBtn.click(
+            get_history_list,
+            [user_name],
+            [historySelectList],
+            show_progress="full",
+        )
         # historyDeleteBtn.click(delete_chat_history, [current_help_model, historySelectList],
         #                        [status_display, historySelectList, chatbot],
-        #                        _js='(a,b,c)=>{return showConfirmationDialog(a, b, c);}').then(
+        #                        _js'(a,b,c)=>{return showConfirmationDialog(a, b, c);}').then(
         #     reset,
         #     inputs=[current_help_model, retain_system_prompt_checkbox],
         #     outputs=[chatbot, status_display, historySelectList, systemPromptTxt],
         #     show_progress="full",
-        #     _js='(a,b)=>{return clearChatbot(a,b);}',
+        #     _js'(a,b)=>{return clearChatbot(a,b);}',
         # )
-        historySelectList.input(**load_history_from_file_args)
+        historySelectList.input(fn=load_chat_history,
+                                inputs=[historySelectList, user_name],
+                                outputs=[saveFileName,  chatbot])
         # uploadFileBtn.upload(upload_chat_history, [current_help_model, uploadFileBtn], [
         #     saveFileName, systemPromptTxt, chatbot, single_turn_checkbox, temperature_slider, top_p_slider,
         #     n_choices_slider, stop_sequence_txt, max_context_length_slider, max_generation_slider, presence_penalty_slider,
@@ -658,7 +627,7 @@ def load(user_name, user_info):
 
         # Invisible elements
         changeSingleSessionBtn.click(
-            fn=lambda value: gr.Checkbox.update(value=value),
+            fn=lambda value: gr.update(value=value),
             inputs=[single_turn_checkbox],
             outputs=[single_turn_checkbox],
             _js='(a)=>{return bgChangeSingleSession(a);}'
@@ -669,7 +638,7 @@ def load(user_name, user_info):
         #     outputs=[saveFileName, systemPromptTxt, chatbot, single_turn_checkbox, temperature_slider, top_p_slider,
         #              n_choices_slider, stop_sequence_txt, max_context_length_slider, max_generation_slider,
         #              presence_penalty_slider, frequency_penalty_slider, logit_bias_txt, user_identifier_txt],
-        #     _js='(a,b)=>{return bgSelectHistory(a,b);}'
+        #     _js'(a,b)=>{return bgSelectHistory(a,b);}'
         # )
         logout_btn.click(
             fn=None,
@@ -689,7 +658,6 @@ if __name__ == "__main__":
     user_name = "tec-do"
     user_info = "tec-do"
     demo = load(user_name, user_info)
-
     demo.queue(concurrency_count=CONCURRENT_COUNT).launch(
         allowed_paths=[HISTORY_DIR, assets_path],
         server_name=server_name,

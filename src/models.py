@@ -7,7 +7,7 @@ import json
 
 import colorama
 import gradio as gr
-from loguru import logger
+from config import logger
 
 from src import config
 from src.base_model import ModelType

@@ -408,9 +408,11 @@ async def judge_if_brand(word: str) -> str:
     tavily_search_response_list = tavily_search_response["results"]
     for tavily_search_response_item in tavily_search_response_list:
         if tavily_search_response_item["score"] > 0.3:
-            word_ref_content += f"title:{tavily_search_response_item['title']} content:{tavily_search_response_item['content']}"
+            word_ref_content += f"title:{tavily_search_response_item['title']} content:{
+                tavily_search_response_item['content']}"
     if word_ref_content == "":
-        word_ref_content += f"title:{tavily_search_response_list[0]['title']} content:{tavily_search_response_list[0]['content']}"
+        word_ref_content += f"title:{tavily_search_response_list[0]['title']} content:{
+            tavily_search_response_list[0]['content']}"
 
     prompt_template = JUDGE_IF_BRAND_PROMPT_TEMPLATE
     llm = create_azure_llm()
@@ -421,9 +423,9 @@ async def judge_if_brand(word: str) -> str:
 
 
 @tool
-async def tavily_search(query: str) -> str:
+async def product_tavily_search(query: str) -> str:
     """
-    This function is used to search the query , and return the search result.
+    This function is used to search the query(Can only search for information related to the product.), and return the search result.
 
     Args:
         query (str): The query to search.
@@ -434,8 +436,10 @@ async def tavily_search(query: str) -> str:
     tavily_search_response_list = tavily_search_response["results"]
     for tavily_search_response_item in tavily_search_response_list:
         if tavily_search_response_item["score"] > 0.3:
-            result += f"title:{tavily_search_response_item['title']} content:{tavily_search_response_item['content']}"
+            result += f"title:{tavily_search_response_item['title']} content:{
+                tavily_search_response_item['content']}"
     if result == "":
-        result += f"title:{tavily_search_response_list[0]['title']} content:{tavily_search_response_list[0]['content']}"
+        result += f"title:{tavily_search_response_list[0]['title']} content:{
+            tavily_search_response_list[0]['content']}"
 
     return result
