@@ -1,8 +1,6 @@
-
-
 selectors = {
     "lazada": {
-        "title": "h1.pdp-mod-product-badge-title",
+        "product_title": "h1.pdp-mod-product-badge-title",
         "price": "span.pdp-v2-product-price-content-salePrice-amount",
         "original_price": "span.pdp-v2-product-price-content-originalPrice-amount",
         "discount": "span.pdp-v2-product-price-content-originalPrice-discount",

@@ -1,6 +1,11 @@
-gradio==3.43.2
+gradio
 gradio_client
 gradio[oauth]
+fastmcp
+langgraph
+langchain
+langchain-community
+langchain-openai
 pypinyin
 tiktoken
 socksio
@@ -11,9 +16,6 @@ markdown
 pandas
 commentjson
 jinja2
-langchain
-langchain-community
-langchain-openai
 markdown
 PyPDF2
 pdfplumber
@@ -31,3 +33,4 @@ selenium==4.15.2
 beautifulsoup4==4.12.2
 requests==2.31.0
 lxml==4.9.3
+e-commerce-toolkit==0.0.19 --index-url https://maven-public.tec-develop.cn/repository/pypi-public/simple/ --trusted-host maven-public.tec-develop.cn

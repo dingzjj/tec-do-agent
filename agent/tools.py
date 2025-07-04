@@ -1,5 +1,8 @@
-from prompt import generate_sys_video_analysis_prompt
-from fastmcp import Client
+import asyncio
+from agent.prompt import JUDGE_IF_BRAND_PROMPT_TEMPLATE
+from agent.llm import create_azure_llm
+from tavily import TavilyClient
+from agent.prompt import generate_sys_video_analysis_prompt
 from pathlib import Path
 import requests
 import uuid
@@ -13,14 +16,15 @@ from google.oauth2 import service_account
 from typing import Annotated
 from langgraph.types import interrupt
 from langchain_core.tools import tool
-import asyncio
 import json
-from logger_config import logger
-from pojo import AppInterrupt, GraphNodeEnum
+from config import logger
+from agent.pojo import AppInterrupt, GraphNodeEnum
 import shutil
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+from fastmcp import Client
 
 
 @tool
@@ -388,18 +392,50 @@ def mixclip(
         cleanup_directories([input_dir])
 
 
-async def main():
-    # Since search_by_product is now a sync function that handles async internally,
-    # we can call it directly without await
-    result = await search_by_product("可乐")
-    print(result)
+@tool
+async def judge_if_brand(word: str) -> str:
+    """
+    This function is used to judge if the word is a brand.
+
+    Args:
+        word (str): The word to judge.
+    """
+    # 使用llm与tavily
+    word_ref_content = ""
+    # 判断word是否为品牌
+    tavily_client = TavilyClient(api_key=conf.get("tavily_api_key"))
+    tavily_search_response = tavily_client.search(f"What is {word}?")
+    tavily_search_response_list = tavily_search_response["results"]
+    for tavily_search_response_item in tavily_search_response_list:
+        if tavily_search_response_item["score"] > 0.3:
+            word_ref_content += f"title:{tavily_search_response_item['title']} content:{tavily_search_response_item['content']}"
+    if word_ref_content == "":
+        word_ref_content += f"title:{tavily_search_response_list[0]['title']} content:{tavily_search_response_list[0]['content']}"
+
+    prompt_template = JUDGE_IF_BRAND_PROMPT_TEMPLATE
+    llm = create_azure_llm()
+    chain = prompt_template | llm
+    is_brand_result = chain.invoke(
+        {"word": word, "word_ref_content": word_ref_content})
+    return is_brand_result.content
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
-    # video_urls = ['https://ins-obs.imcreator.vip/tiktok/video_v10033g50000cov651nog65u6vkbu4qg.mp4',
-    #               'https://ins-obs.imcreator.vip/tiktok/video_v10033g50000cr8p7qnog65kqu04om90.mp4',
-    #               'https://ins-obs.imcreator.vip/tiktok/video_v10033g50000cr8p7qnog65kqu04om90.mp4']
-    # product_name = '奶粉'
+@tool
+async def tavily_search(query: str) -> str:
+    """
+    This function is used to search the query , and return the search result.
 
-    # print(mixclip(video_urls=video_urls, product_name=product_name))
+    Args:
+        query (str): The query to search.
+    """
+    result = ""
+    tavily_client = TavilyClient(api_key=conf.get("tavily_api_key"))
+    tavily_search_response = tavily_client.search(query)
+    tavily_search_response_list = tavily_search_response["results"]
+    for tavily_search_response_item in tavily_search_response_list:
+        if tavily_search_response_item["score"] > 0.3:
+            result += f"title:{tavily_search_response_item['title']} content:{tavily_search_response_item['content']}"
+    if result == "":
+        result += f"title:{tavily_search_response_list[0]['title']} content:{tavily_search_response_list[0]['content']}"
+
+    return result
