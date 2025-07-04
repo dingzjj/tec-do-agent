@@ -3,6 +3,7 @@ gradio_client
 gradio[oauth]
 fastmcp
 langgraph
+crawl4ai
 langchain
 langchain-community
 langchain-openai
