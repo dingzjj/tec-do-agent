@@ -1,6 +1,7 @@
 gradio
 gradio_client
 gradio[oauth]
+tavily-python
 fastmcp
 langgraph
 crawl4ai

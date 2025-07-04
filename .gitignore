@@ -11,3 +11,4 @@ log
 *.pyd
 temp/*
 temp
+config.json
