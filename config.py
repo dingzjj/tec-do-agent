@@ -44,38 +44,55 @@ class Config:
             logging.error(f"保存配置文件时发生错误: {e}")
             return False
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: Any = None, is_path: bool = False) -> Any:
         """
-        获取配置值，支持嵌套配置访问
+        获取配置值，支持嵌套配置访问,假如返回的是路径，则会返回绝对路径（父目录+配置中的路径）
 
         Args:
             key: 配置键名，支持点号分隔的嵌套键，如 "database.host" 或 "api.openai.key"
             default: 默认值
+            is_path: 是否将返回值作为路径处理，如果为True则返回绝对路径
 
         Returns:
-            配置值或默认值
+            配置值或默认值，如果是路径且is_path=True则返回绝对路径
 
         Examples:
             config.get("openai_api_key")  # 获取顶级配置
             config.get("database.host", "localhost")  # 获取嵌套配置
             config.get("api.openai.model", "gpt-3.5-turbo")  # 获取深层嵌套配置
+            config.get("log_dir", "logs", is_path=True)  # 获取路径配置并返回绝对路径
         """
+        # 获取配置值
         if "." not in key:
-            return self.config_data.get(key, default)
+            value = self.config_data.get(key, default)
+        else:
+            # 处理嵌套键
+            keys = key.split(".")
+            current = self.config_data
 
-        # 处理嵌套键
-        keys = key.split(".")
-        current = self.config_data
-
-        try:
-            for k in keys:
-                if isinstance(current, dict) and k in current:
-                    current = current[k]
+            try:
+                for k in keys:
+                    if isinstance(current, dict) and k in current:
+                        current = current[k]
+                    else:
+                        value = default
+                        break
                 else:
-                    return default
-            return current
-        except (KeyError, TypeError):
-            return default
+                    value = current
+            except (KeyError, TypeError):
+                value = default
+
+        # 如果指定为路径且值为字符串，则转换为绝对路径
+        if is_path and isinstance(value, str) and value:
+            # 获取配置文件所在目录作为父目录
+            parent_dir = os.path.dirname(os.path.abspath(self.config_file))
+            # 如果路径不是绝对路径，则拼接父目录
+            if not os.path.isabs(value):
+                value = os.path.join(parent_dir, value)
+            # 标准化路径（处理 .. 和 . 等）
+            value = os.path.normpath(value)
+
+        return value
 
     def set(self, key: str, value: Any) -> None:
         """
@@ -172,6 +189,68 @@ class Config:
         """获取所有配置"""
         return self.config_data.copy()
 
+    def get_path(self, key: str, default: str = "", create_if_not_exists: bool = False) -> str:
+        """
+        获取路径配置值，自动转换为绝对路径
+
+        Args:
+            key: 配置键名，支持点号分隔的嵌套键
+            default: 默认路径值
+            create_if_not_exists: 如果路径不存在是否创建目录
+
+        Returns:
+            绝对路径字符串
+
+        Examples:
+            config.get_path("log_dir", "logs")  # 返回绝对路径
+            config.get_path("data.output_dir", "output", create_if_not_exists=True)  # 返回嵌套配置的绝对路径并创建目录
+        """
+        path = self.get(key, default, is_path=True)
+
+        if create_if_not_exists and path:
+            os.makedirs(path, exist_ok=True)
+
+        return path
+
+    def ensure_path_exists(self, key: str, default: str = "") -> str:
+        """
+        确保路径存在，如果不存在则创建目录
+
+        Args:
+            key: 配置键名，支持点号分隔的嵌套键
+            default: 默认路径值
+
+        Returns:
+            绝对路径字符串
+
+        Examples:
+            config.ensure_path_exists("log_dir", "logs")  # 确保日志目录存在
+        """
+        return self.get_path(key, default, create_if_not_exists=True)
+
+    def get_file_path(self, key: str, default: str = "", check_exists: bool = False) -> str:
+        """
+        获取文件路径配置值，自动转换为绝对路径
+
+        Args:
+            key: 配置键名，支持点号分隔的嵌套键
+            default: 默认文件路径值
+            check_exists: 是否检查文件是否存在
+
+        Returns:
+            绝对文件路径字符串
+
+        Examples:
+            config.get_file_path("config_file", "config.json")  # 返回配置文件绝对路径
+            config.get_file_path("data.input_file", "input.txt", check_exists=True)  # 检查文件是否存在
+        """
+        file_path = self.get_path(key, default)
+
+        if check_exists and file_path and not os.path.isfile(file_path):
+            logging.warning(f"文件不存在: {file_path}")
+
+        return file_path
+
 
 # 全局配置实例
 conf = Config()
@@ -180,8 +259,7 @@ conf = Config()
 def setup_logging():
     """配置日志记录"""
     # 创建日志目录
-    log_dir = conf.get('log_dir')
-    os.makedirs(log_dir, exist_ok=True)
+    log_dir = conf.ensure_path_exists('log_dir', 'logs')
 
     # 使用日期作为文件名
     date_str = datetime.now().strftime("%Y-%m-%d")

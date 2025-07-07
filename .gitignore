@@ -12,3 +12,4 @@ log
 temp/*
 temp
 config.json
+test*

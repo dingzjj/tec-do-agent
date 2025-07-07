@@ -2,84 +2,7 @@ import random
 import time
 import requests
 from bs4 import BeautifulSoup
-from agent.seo_agent.selector import selectors
-from selenium.webdriver.chrome.options import Options
 from config import logger
-from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-from crawl4ai import AsyncWebCrawler
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from crawl4ai import BrowserConfig
-from crawl4ai import CrawlerRunConfig
-import re
-
-
-async def extracted_content_in_lazada_by_css_selector(url, css_schema):
-    """
-    css_schema参考schema = {
-    "name": str,              # Schema name
-    "baseSelector": str,      # Base CSS selector
-    "fields": [               # List of fields to extract
-        {
-            "name": str,      # Field name
-            "selector": str,  # CSS selector
-            "type": str,     # Field type: "text", "attribute", "html", "regex"
-            "attribute": str, # For type="attribute"
-            "pattern": str,  # For type="regex"
-            "transform": str, # Optional: "lowercase", "uppercase", "strip"
-            "default": Any    # Default value if extraction fails
-        }
-        ]
-    }
-    """
-    browser_config = BrowserConfig(
-        browser_type="chromium",
-        headless=True,
-        # proxy="http://localhost:8888",
-
-    )
-    css_strategy = JsonCssExtractionStrategy(schema=css_schema)
-    crawler_run_config = CrawlerRunConfig(
-        # Force the crawler to wait until images are fully loaded
-        wait_for_images=True,
-        # Option 1: If you want to automatically scroll the page to load images
-        scan_full_page=True,  # Tells the crawler to try scrolling the entire page
-        scroll_delay=0.5,     # Delay (seconds) between scroll steps
-        js_code="window.scrollTo(0, document.body.scrollHeight);",
-        wait_for=css_schema["fields"][0]["selector"],
-        # cache_mode=CacheMode.BYPASS,
-        verbose=True,
-        extraction_strategy=css_strategy,
-
-    )
-    crawler = AsyncWebCrawler(config=browser_config)
-    result = await crawler.arun(url=url, config=crawler_run_config)
-    return result.extracted_content
-
-
-def clean_title_for_search(title):
-    """清理商品标题用于搜索"""
-    if not title:
-        return ""
-    import re
-    # 移除常见无关词汇
-    remove_words = [
-        "lazada", "official", "store", "original", "genuine", "brand", "new",
-        "hot", "sale", "promotion", "discount", "free", "shipping", "ready", "stock"
-    ]
-    # 转小写并移除特殊字符
-    clean_title = re.sub(r'[^\w\s]', ' ', title.lower())
-    clean_title = re.sub(r'\d+', '', clean_title)
-    # 分词并过滤
-    words = [w for w in clean_title.split(
-    ) if w not in remove_words and len(w) > 2]
-    # 返回前5个关键词
-    return ' '.join(words[:5])
 
 
 def crawl_with_requests(url, selector, is_deep=False):
@@ -157,5 +80,3 @@ def crawl_with_requests_single(url, selector):
     """
     results = crawl_with_requests(url, selector)
     return results[0] if results else ""
-
-

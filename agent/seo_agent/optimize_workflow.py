@@ -1,4 +1,4 @@
-from agent.utils import capitalize_title
+from agent.seo_agent.utils import capitalize_title
 from agent.seo_agent.pojo import ProductInfo
 from agent.seo_agent.agent import CreateTitleAgent
 from langchain_core.runnables import RunnableConfig
@@ -8,8 +8,8 @@ from agent.seo_agent.agent import GetKeywordsAgent
 from langgraph.graph import StateGraph, START, END
 from config import logger
 from pydantic import BaseModel, Field
-from agent.utils import extracted_content_in_lazada_by_css_selector
-from agent.selector import selectors
+from agent.seo_agent.utils import extracted_content_in_lazada_by_css_selector, add_background_to_optimize_image_with_product_info
+from agent.seo_agent.selector import selectors
 import os
 from agent.seo_agent.pojo import Keywords
 os.environ["LANGSMITH_API_KEY"] = "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"
@@ -25,6 +25,8 @@ class OptimizeState(BaseModel):
     product_title: str = Field(default="")
     # 商品的描述
     product_description: str = Field(default="")
+    # 商品的图片
+    product_images: list = []
     # 商品类别
     product_category: str = Field(default="")
     # 商品的评论
@@ -32,8 +34,6 @@ class OptimizeState(BaseModel):
     # 符合商品的关键词(热点词)
     product_keywords: Keywords = Field(default=Keywords(product_brand=[], product_category=[
     ], product_attribute=[], selling_points=[], other_keywords=[]))
-    # 商品的图片
-    product_images: list[str] = []
     # 相关商品(存放url)
     related_products_urls: list[str] = []
     # 错误信息
@@ -41,24 +41,28 @@ class OptimizeState(BaseModel):
 
 
 async def crawl_product_info(state: OptimizeState):
+    """
+    通过url来爬取商品的标题 描述  图片
+    TODO 获取商品图片（未完成）
+    """
 
-    if state.product_title == "" or state.product_description == "":
-        css_schema = {
-            "baseSelector": "#container",
-            "fields": [
-                {"name": "product_title",
-                 "selector": selectors["lazada"]["product_title"], "type": "text"},
-                {"name": "product_description",
-                 "selector": selectors["lazada"]["product_description"], "type": "text"},
-            ],
-        }
-        extracted_result = await extracted_content_in_lazada_by_css_selector(
-            state.product_url, css_schema)
-        state.product_title = extracted_result["product_title"]
-        state.product_description = extracted_result["product_description"]
-        return state
-    else:
-        return state
+    css_schema = {
+        "baseSelector": "#container",
+        "fields": [
+            {"name": "product_title",
+                "selector": selectors["lazada"]["product_title"], "type": "text"},
+            {"name": "product_description",
+                "selector": selectors["lazada"]["product_description"], "type": "text"},
+            {"name": "product_images",
+                "selector": selectors["lazada"]["product_images"], "type": "html"},
+        ],
+    }
+    extracted_result = await extracted_content_in_lazada_by_css_selector(
+        state.product_url, css_schema)
+    state.product_title = extracted_result["product_title"]
+    state.product_description = extracted_result["product_description"]
+    state.product_images = extracted_result["product_images"]
+    return state
 
 
 # 为llm提供模版与关键词(热点词)
@@ -116,6 +120,30 @@ async def check_title(state: OptimizeState):
     return state
 
 
+async def create_description(state: OptimizeState):
+    # 创建描述
+
+    return state
+
+
+async def check_description(state: OptimizeState):
+    # 检查描述是否符合要求
+    # 1.判断是否与类别不一致
+    # 2.矛盾词
+    # 3.无效关键词
+    # 用户提出建议
+    # interrupt("check description")
+    return state
+
+
+async def optimize_image(state: OptimizeState):
+    # 优化图片(实现：+背景)
+    product_images = state.product_images
+    product_description = state.product_description
+    after_optimize_product_images = await add_background_to_optimize_image_with_product_info(product_images, product_description)
+    return state
+
+
 def get_app():
     graph = StateGraph(OptimizeState)
     graph.add_node("crawl_product_info", crawl_product_info)
@@ -123,12 +151,18 @@ def get_app():
     graph.add_node("user_check_keywords", check_keywords)
     graph.add_node("create_title", create_title)
     graph.add_node("check_title", check_title)
+    graph.add_node("create_description", create_description)
+    graph.add_node("check_description", check_description)
+    graph.add_node("optimize_image", optimize_image)
     graph.add_edge(START, "crawl_product_info")
     graph.add_edge("crawl_product_info", "get_keywords")
     graph.add_edge("get_keywords", "user_check_keywords")
     graph.add_edge("user_check_keywords", "create_title")
     graph.add_edge("create_title", "check_title")
-    graph.add_edge("get_keywords", END)
+    graph.add_edge("check_title", "create_description")
+    graph.add_edge("create_description", "check_description")
+    graph.add_edge("check_description", "optimize_image")
+    graph.add_edge("optimize_image", END)
     memory = MemorySaver()
     app = graph.compile(checkpointer=memory)
     return app

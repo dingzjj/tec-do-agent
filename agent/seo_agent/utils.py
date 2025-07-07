@@ -1,10 +1,75 @@
-from agent.utils import extracted_content_in_lazada_by_css_selector
+from enum import Enum
+from google.oauth2 import service_account
+from google.genai import types
+from google import genai
+from pydantic import BaseModel
+from typing import List, Any
+from langgraph.graph import StateGraph, START, END
+from agent.llm import create_gemini_create_image_model_client
 from agent.llm import create_azure_llm
+from config import logger
 from agent.seo_agent.selector import selectors
 import re
 import json
 import asyncio
+import os
+from typing import List
 from urllib.parse import quote_plus
+from crawl4ai import AsyncWebCrawler
+from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+from crawl4ai import BrowserConfig
+from crawl4ai import CrawlerRunConfig
+from io import BytesIO
+from PIL import Image
+from vertexai.generative_models import Part
+from agent.pojo import TaskStatusEnum
+
+
+async def extracted_content_in_lazada_by_css_selector(url, css_schema):
+    """
+    css_schema参考schema = {
+    "name": str,              # Schema name
+    "baseSelector": str,      # Base CSS selector
+    "fields": [               # List of fields to extract
+        {
+            "name": str,      # Field name
+            "selector": str,  # CSS selector
+            "type": str,     # Field type: "text", "attribute", "html", "regex"
+            "attribute": str, # For type="attribute"
+            "pattern": str,  # For type="regex"
+            "transform": str, # Optional: "lowercase", "uppercase", "strip"
+            "default": Any    # Default value if extraction fails
+        }
+        ]
+    }
+    """
+    browser_config = BrowserConfig(
+        browser_type="chromium",
+        headless=True,
+        # proxy="http://localhost:8888",
+
+    )
+    css_strategy = JsonCssExtractionStrategy(schema=css_schema)
+    crawler_run_config = CrawlerRunConfig(
+        # Force the crawler to wait until images are fully loaded
+        wait_for_images=True,
+        # Option 1: If you want to automatically scroll the page to load images
+        scan_full_page=True,  # Tells the crawler to try scrolling the entire page
+        scroll_delay=0.5,     # Delay (seconds) between scroll steps
+        js_code="window.scrollTo(0, document.body.scrollHeight);",
+        wait_for=css_schema["fields"][0]["selector"],
+        # cache_mode=CacheMode.BYPASS,
+        verbose=True,
+        extraction_strategy=css_strategy,
+
+    )
+    crawler = AsyncWebCrawler(config=browser_config)
+    result = await crawler.arun(url=url, config=crawler_run_config)
+    # Handle the result properly based on the actual return type
+    if hasattr(result, 'extracted_content'):
+        return result.extracted_content
+    else:
+        return result
 
 
 def capitalize_title(title: str) -> str:
@@ -82,7 +147,7 @@ async def search_competitors(url, platform="lazada", max_products=5):
     response = await llm.ainvoke(prompt)
     print("提取关键词结果：")
     print(response.content)
-    search_term = response.content.strip().splitlines()
+    search_term = str(response.content).strip().splitlines()
     search_term = [kw.lstrip('- ').strip() for kw in search_term]
     print(f"清理后的搜索关键词: {search_term}")
     if not search_term:
@@ -115,7 +180,13 @@ async def search_competitors(url, platform="lazada", max_products=5):
 
     try:
         extracted = await extracted_content_in_lazada_by_css_selector(search_url, css_schema)
-        extracted = json.loads(extracted)
+        # Handle the extracted content properly
+        if isinstance(extracted, str):
+            extracted = json.loads(extracted)
+        elif hasattr(extracted, 'extracted_content'):
+            extracted = json.loads(str(extracted.extracted_content))
+        else:
+            extracted = json.loads(str(extracted))
 
         original_id = re.search(r'/products/.*-i(\d+)', url)
         original_id = original_id.group(1) if original_id else None
@@ -180,13 +251,72 @@ async def search_competitors(url, platform="lazada", max_products=5):
         return []
 
 
-async def main():
-    # 测试搜索功能
-    test_url = "https://www.lazada.com.my/products/pdp-i3147797988-s15855846785.html"
-    competitors = await search_competitors(test_url, platform="lazada", max_products=5)
-    print("找到的竞品链接:")
-    for comp in competitors:
-        print(comp)
+async def add_background_to_optimize_image_with_product_info(
+    product_images: list, product_description: str, output_dir: str
+) -> list:
+    """
+    根据产品信息来为产品图添加背景
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    Args:
+        product_images: 产品图片路径列表
+        product_description: 产品描述信息
+        output_dir: 输出目录
+    Returns:
+        list: 优化后的产品图片路径列表
+    """
+    if len(product_images) == 0:
+        return []
+
+    client = create_gemini_create_image_model_client()
+    SYSTEM_INSTRACTION = """You are a picture beautification robot. 
+    The user will upload a product image and the direction they wish to modify. 
+    All you need to do is to beautify the product images based on the users' descriptions of their demands, 
+    so as to attract customers' attention and increase the purchase rate. At the same time, 
+    you must first ensure that the product in the generated image matches that in the original product image, 
+    and the background beautification should also be in line with the style of the product.
+    """
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-preview-image-generation",
+            contents=[SYSTEM_INSTRACTION +
+                      product_description, product_images],
+            config=types.GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"]),
+        )
+    except Exception as e:
+        print(f"Error during image generation: {e}")
+        return []
+
+    generated_images_path = []
+    if response:
+        index = 0
+        for part in response.candidates[0].content.parts:
+            if part.text is not None:
+                print(f"Text response: {part.text}")
+            elif part.inline_data is not None:
+                image_data = BytesIO(part.inline_data.data)
+                try:
+                    if image_data.getbuffer().nbytes > 0:  # Check if data is not empty
+                        image = Image.open(image_data)
+                        try:
+                            # Generate a unique filename for each image
+                            # Use index + 1 for human-friendly naming
+                            image_filename = f"{output_dir}/generated_image_{
+                                index + 1}.png"
+                            image.save(image_filename)  # Save the image
+                            generated_images_path.append(
+                                image_filename
+                            )  # Add to the list of generated images
+                            image.close()
+                        except Exception as e:
+                            logger.error(f"Error saving image: {e}")
+                            image.close()
+                            return []
+                    else:
+                        print("Generated image data is empty.")
+                except Exception as e:
+                    print(f"Error saving image data: {e}")
+
+                    return []
+
+    return generated_images_path
