@@ -1,8 +1,8 @@
-from agent.title_and_description_optimize.pojo import ProductInfo
+from agent.seo_agent.pojo import ProductInfo
 from langgraph.prebuilt import create_react_agent
 from agent.llm import create_azure_llm
 from agent.prompt import GET_KEYWORDS_AGENT_PROMPT_TEMPLATE, CREATE_TITLE_AGENT_PROMPT_TEMPLATE
-from agent.title_and_description_optimize.pojo import Keywords
+from agent.seo_agent.pojo import Keywords
 # 采用reAct
 
 from agent.tools import judge_if_brand, product_tavily_search

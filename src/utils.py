@@ -98,6 +98,8 @@ def extract_chat_history(chatbot) -> List[List[str]]:
 
 
 def predict(user_question: str, chatbot, use_streaming_checkbox, language_select_dropdown):
+    print(f"user_question: {user_question}")
+    print(f"chatbot: {chatbot}")
     # TODO 提取chatbot中的对话内容
     # 提取纯文本对话历史
     chat_history = extract_chat_history(chatbot)

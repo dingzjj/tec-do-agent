@@ -1,17 +1,17 @@
 from agent.utils import capitalize_title
-from agent.title_and_description_optimize.pojo import ProductInfo
-from agent.title_and_description_optimize.agent import CreateTitleAgent
+from agent.seo_agent.pojo import ProductInfo
+from agent.seo_agent.agent import CreateTitleAgent
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
-from agent.title_and_description_optimize.agent import GetKeywordsAgent
+from agent.seo_agent.agent import GetKeywordsAgent
 from langgraph.graph import StateGraph, START, END
 from config import logger
 from pydantic import BaseModel, Field
 from agent.utils import extracted_content_in_lazada_by_css_selector
 from agent.selector import selectors
 import os
-from agent.title_and_description_optimize.pojo import Keywords
+from agent.seo_agent.pojo import Keywords
 os.environ["LANGSMITH_API_KEY"] = "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"
 os.environ["LANGSMITH_TRACING"] = "true"  # Enables LangSmith tracing
 # Project name for organizing LangSmith traces

@@ -22,12 +22,10 @@ def load_app(user_name, chatbot):
     model_name = conf.get("help_model.model_name", "")
     current_help_model = get_help_model(
         model_name=model_name, user_name=user_name)
-    chatbot += [["输入链接或者在旁边输入商品信息", ""]]
+    chatbot += [[None, "输入链接或者在旁边输入商品信息"]]
     return current_help_model, chatbot
 
 # 参考以下
-
-
 # outputs=[chatbot, status_display, historySelectList,
     #  single_turn_checkbox, temperature_slider],
 
