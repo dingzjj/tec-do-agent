@@ -1,3 +1,10 @@
+from agent.third_part.minio import MinioClient
+import urllib.parse
+import os
+import shutil
+import uuid
+from config import conf
+from contextlib import contextmanager
 import random
 import time
 import requests
@@ -80,3 +87,73 @@ def crawl_with_requests_single(url, selector):
     """
     results = crawl_with_requests(url, selector)
     return results[0] if results else ""
+
+
+@contextmanager
+def temp_dir():
+    temp_dir = conf.get_path("temp_dir")
+    temp_dir_path = os.path.join(temp_dir, str(uuid.uuid4()))
+    os.makedirs(temp_dir_path, exist_ok=True)
+    yield temp_dir_path
+    #  会递归地删除目录及其所有内容
+    shutil.rmtree(temp_dir_path)
+
+# 如何判断是本地文件还是url,假如是本地文件，判断文件是否存在。假如是url则下载到download_dir下
+
+
+def judge_file_exist(file_path, download_dir, download_name):
+    result = {"type": None, "exist": False, "path": file_path}
+
+    # 判断是否是 URL
+    parsed_url = urllib.parse.urlparse(file_path)
+    if parsed_url.scheme in ["http", "https", "ftp"]:  # 判断是否为有效的 URL
+        result["type"] = "url"
+
+        # 下载文件到指定目录
+        try:
+            # 提取文件名
+            # filename = os.path.basename(parsed_url.path)
+            download_path = os.path.join(download_dir, file_path)
+
+            # 下载文件
+            response = requests.get(file_path, stream=True)
+            if response.status_code == 200:
+                with open(download_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                result["exist"] = True
+                result["path"] = download_path
+            else:
+                result["exist"] = False
+                result["path"] = None
+        except Exception as e:
+            result["exist"] = False
+            result["path"] = None
+            print(f"Error downloading file: {e}")
+
+    # 判断是否是本地文件
+    elif os.path.exists(file_path):
+        result["type"] = "local"
+        result["exist"] = True
+        result["path"] = file_path
+    else:
+        result["type"] = "local"
+        result["exist"] = False
+        result["path"] = None
+
+    return result
+
+
+def share_file_in_oss(file_path, oss_path, bucket: str, expires: float) -> str:
+    # 上传文件到oss
+    minio_endpoint = conf.get("minio_endpoint")
+    minio_access_key = conf.get("minio_access_key")
+    minio_secret_key = conf.get("minio_secret_key")
+    minio_client = MinioClient(
+        minio_endpoint, minio_access_key, minio_secret_key)
+
+    # 判断bucket是否存在
+    minio_client.make_bucket(bucket)
+    minio_client.upload_file(bucket, oss_path, file_path)
+    url = minio_client.share_file(bucket, oss_path, expires)
+    return url

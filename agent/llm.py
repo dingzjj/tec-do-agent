@@ -1,3 +1,6 @@
+import time
+import asyncio
+import httpx
 from http import HTTPStatus
 from dashscope import VideoSynthesis
 from google import genai
@@ -57,7 +60,7 @@ def chat_with_openai_in_azure_with_template(system_prompt_template: str, **kwarg
 
 def chat_with_gemini_in_vertexai(system_prompt: str, prompt: str) -> str:
     credentials = service_account.Credentials.from_service_account_file(
-        filename=conf.get('gemini_conf'))
+        filename=conf.get_file_path('gemini_conf'))
     vertexai.init(project='ca-biz-vypngh-y97n', credentials=credentials)
     multimodal_model = GenerativeModel(
         model_name="gemini-2.5-flash-preview-04-17",
@@ -149,6 +152,8 @@ def i2v_with_tongyi(img_url, prompt, resolution, duration, prompt_extend=True):
     # img_url = "file://" + "C:/path/to/your/img.png"  # Windows
     # 或使用相对路径
     # img_url = "file://" + "./img.png"                # 以实际路径为准
+
+    return 返回的是远程url，需要下载
     """
     # call sync api, will return the result
     rsp = VideoSynthesis.call(api_key=conf.get("tongyi_api_key"),
@@ -169,3 +174,82 @@ def i2v_with_tongyi(img_url, prompt, resolution, duration, prompt_extend=True):
     else:
         logger.error('Failed, status_code: %s, code: %s, message: %s' %
                      (rsp.status_code, rsp.code, rsp.message))
+
+
+async def image2videoInKeling(img_path, positive_prompt, negative_prompt,  duration, model: str = "kling-v2-1-master"):
+    # 使用keling的api生成视频，最终返回一个url，url是视频的地址
+
+    http_client = httpx.Client(timeout=httpx.Timeout(
+        600.0, connect=60.0), follow_redirects=True)
+    KLING_API_KEY = conf.get("KLING_API_KEY")
+    KLING_SECRET = conf.get("KLING_SECRET")
+    KLING_API_BASE_URL = conf.get("KLING_API_BASE_URL")
+#  TODO 将图片上传到图床(对象存储服务OSS)
+    image_url = ""
+    payload = {
+        # kling-v1, kling-v1-5, kling-v1-6, kling-v2-master, kling-v2-1, kling-v2-1-master
+        "model_name": model,
+        "mode": "std",  # std 标准，pro 增强
+        "image": image_url,
+        "prompt": positive_prompt,
+        "negative_prompt": negative_prompt,
+        "duration": duration  # 枚举值：5，10
+    }
+
+    headers = {
+        "X-API-Key": KLING_API_KEY,
+        "X-Secret-Key": KLING_SECRET,
+        "Content-Type": "application/json",
+    }
+    url = f"{KLING_API_BASE_URL}/gen_video_task_by_image_create"
+
+    response = http_client.post(url, headers=headers, json=payload)
+
+    task_id = response.json()["data"]["taskId"]
+
+    headers = {
+        "X-API-Key": KLING_API_KEY,
+        "X-Secret-Key": KLING_SECRET,
+        "Content-Type": "application/json",
+    }
+    url = f"{KLING_API_BASE_URL}/gen_video_task_by_image_get/{task_id}"
+    interval = 30  # 每30秒检查一次任务状态
+    start_time = time.time()
+    max_wait = 600  # 最长等待时间10分钟
+
+    while True:
+        try:
+            response = http_client.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+        except httpx.RequestError as e:
+            logger.error(f"请求异常: {type(e).__name__}: {e}")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"请求失败，状态码：{e.response.status_code}")
+            return None
+        except Exception as e:
+            logger.error(f"解析响应失败: {e}")
+            return None
+        task_status = data.get("task_status")
+        if time.time() - start_time > max_wait:
+            logger.error("等待超时，任务未完成。")
+            return None
+
+        if task_status == "processing":
+            logger.info("视频正在处理中，继续等待...")
+        elif task_status == "submitted":
+            logger.info("任务已提交，等待处理...")
+        elif task_status == "succeed":
+            video_list = data.get("videos", [])
+            if video_list:
+                return video_list[0].get("url")
+            else:
+                logger.error("视频结果为空。")
+                return None
+        elif task_status == "failed":
+            logger.error("任务失败，无法获取视频。")
+            return None
+        else:
+            logger.error(f"未知任务状态: {task_status}")
+        await asyncio.sleep(interval)

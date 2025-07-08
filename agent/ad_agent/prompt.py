@@ -105,6 +105,29 @@ ANALYSE_IMAGE_RESPONSE_SCHEMA = {
         "Character posture"
     ]
 }
+
+CREATE_VIDEO_PROMPT_LIMIT_cn = """
+- 达到展示商品的目的
+- 模特图片中模特动起来，并且展示商品
+"""
+CREATE_VIDEO_PROMPT_LIMIT_en = """
+- To achieve the purpose of showcasing the product
+- In the model pictures, the model moves and displays the product
+"""
+CREATE_VIDEO_PROMPT_LIMIT_ABOUT_MOVEMENT_cn = """
+- 达到展示商品的目的
+- 模特图片中模特动起来，并且展示商品
+- 模特动作幅度不要太大，不要出现夸张的动作,不要有转身操作
+- 尽量选择左右轻微摆动的动作
+"""
+CREATE_VIDEO_PROMPT_LIMIT_ABOUT_MOVEMENT_en = """
+- To achieve the purpose of showcasing the product
+- In the model pictures, the model moves and displays the product
+- The model's movements should not be too large, avoid exaggerated actions, and do not include turning operations
+- Try to choose movements with slight left-right swaying
+"""
+
+
 CREATE_VIDEO_PROMPT_SYSTEM_PROMPT_cn = """
 # Role: 商品展示视频脚本制作专家
 
@@ -146,7 +169,8 @@ CREATE_VIDEO_PROMPT_SYSTEM_PROMPT_cn = """
    - 控制每条信息简洁明了，避免冗长描述。
    - 设定快速切换的节奏，保持观众的注意力。
    - 确保视觉效果在短时间内产生最大冲击力。
-
+4. 视频内容：
+   {video_content_limit}
 ## Workflows
 
 - 目标: 制作一个吸引顾客的商品展示视频脚本，时长{duration}秒。核心是让模特图片中模特动起来，并且展示商品。不需要考虑视频的背景音乐，也不要添加字幕，只需要考虑视频的画面和内容。
@@ -194,6 +218,9 @@ CREATE_VIDEO_PROMPT_SYSTEM_PROMPT_en = """
 - Keep each piece of information concise and clear, avoiding lengthy descriptions.
 - Set a fast-paced rhythm to maintain the audience's attention.
 - Ensure that the visual effects have the maximum impact within a short period. 
+4. Video Content:
+- {video_content_limit}
+
 ## Workflows
 
 Objective: Create a {duration}-second video script for showcasing products, with the core being to animate the model in the picture and display the products.There is no need to consider the background music of the video.Also, do not add subtitles. All you need to do is focus on the picture and content of the video.
@@ -216,4 +243,15 @@ CREATE_VIDEO_PROMPT_HUMAN_PROMPT_en = """
 Create a {duration}-second video script for showcasing products, with the core being to animate the model in the picture and display the products.There is no need to consider the background music of the video.Also, do not add subtitles or any additional text information.All you need to do is focus on the picture and content of the video.
 Image information: {model_image_info}
 Product information: {product}
+"""
+
+
+CREATE_VIDEO_BY_IMAGE_RESPONSE_SCHEMA = {}
+
+
+CREATE_VIDEO_BY_IMAGE_SYSTEM_PROMPT_en = """
+
+"""
+CREATE_VIDEO_BY_IMAGE_HUMAN_PROMPT_en = """
+
 """
