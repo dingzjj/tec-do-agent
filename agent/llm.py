@@ -1,3 +1,5 @@
+import uuid
+from agent.third_part.aliyunoss import share_file_in_oss
 import time
 import asyncio
 import httpx
@@ -185,11 +187,11 @@ async def image2videoInKeling(img_path, positive_prompt, negative_prompt,  durat
     KLING_SECRET = conf.get("KLING_SECRET")
     KLING_API_BASE_URL = conf.get("KLING_API_BASE_URL")
 #  TODO 将图片上传到图床(对象存储服务OSS)
-    image_url = ""
+    image_url = share_file_in_oss(img_path, f"{uuid.uuid4()}.jpg")
     payload = {
         # kling-v1, kling-v1-5, kling-v1-6, kling-v2-master, kling-v2-1, kling-v2-1-master
         "model_name": model,
-        "mode": "std",  # std 标准，pro 增强
+        "mode": "pro",  # std 标准，pro 增强
         "image": image_url,
         "prompt": positive_prompt,
         "negative_prompt": negative_prompt,

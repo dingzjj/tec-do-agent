@@ -1,3 +1,4 @@
+from agent.llm import image2videoInKeling
 from agent.ad_agent.utils import concatenate_videos_from_urls
 from agent.utils import temp_dir
 from agent.ad_agent.prompt import CREATE_VIDEO_BY_IMAGE_SYSTEM_PROMPT_en, CREATE_VIDEO_BY_IMAGE_RESPONSE_SCHEMA, CREATE_VIDEO_BY_IMAGE_HUMAN_PROMPT_en
@@ -27,18 +28,27 @@ class VideoFragment(BaseModel):
     video_positive_prompt: str = Field(default="", description="视频正向prompt")
     video_negative_prompt: str = Field(default="", description="视频负向prompt")
     video_url: str = Field(default="", description="视频path(in local)")
-    video_duration: int = Field(default=3, description="视频时长")
+    video_duration: int = Field(default=5, description="视频时长")
     video_script: str = Field(default="", description="视频脚本")
+
+# v1表示纯视频，v2表示视频+音频，v3表示视频+字幕+音频
+
+
+class OutputVideo(BaseModel):
+    video_url_v1: str = Field(default="", description="视频path(in local)")
+    video_url_v2: str = Field(default="", description="视频path(in local)")
+    video_url_v3: str = Field(default="", description="视频path(in local)")
+    subtitle_text: str = Field(default="", description="字幕文案")
+    audio_url: str = Field(default="", description="音频path(in local)")
 
 
 class GenerateVideoState(BaseModel):
-    # 商品
-    product: str
-    # 模特图片（带商品）
-    model_images: list
-    video_duration: int = 3
+    product: str = Field(description="商品名称")
+    product_info: str = Field(description="商品信息")
+    model_images: list = Field(description="模特图片（带商品）")
+    video_fragment_duration: int = 5
     video_fragments: list[VideoFragment] = []
-    output_videos: list = []
+    output_video: OutputVideo = OutputVideo()
 
 
 async def generate_video_fragments(state: GenerateVideoState, config):
@@ -48,7 +58,7 @@ async def generate_video_fragments(state: GenerateVideoState, config):
     for i in range(len(state.model_images)):
         model_image = state.model_images[i]
         video_fragment = VideoFragment(
-            model_image=model_image)
+            model_image=model_image, video_duration=state.video_fragment_duration)
         state.video_fragments.append(video_fragment)
     return {"video_fragments": state.video_fragments}
 
@@ -101,7 +111,7 @@ async def generate_video_prompt(state: GenerateVideoState, config):
 
     for video_fragment in state.video_fragments:
         video_fragment.video_positive_prompt = "电商，模特，服装展示"
-        video_fragment.video_negative_prompt = "旋转，低质量，抽象，扭曲，毁容，变形"
+        video_fragment.video_negative_prompt = "旋转，低质量，抽象，扭曲，毁容，变形,deformation, a poor composition and deformed video, bad teeth, bad eyes, bad limbs"
 
     return {"video_fragments": state.video_fragments}
 
@@ -117,8 +127,8 @@ async def generate_video_with_prompt(state: GenerateVideoState, config):
         image = video_fragment.model_image
         video_positive_prompt = video_fragment.video_positive_prompt
         video_negative_prompt = video_fragment.video_negative_prompt
-        video_url = i2v_with_tongyi(
-            image, video_positive_prompt, video_negative_prompt, "480p", state.video_duration, True)
+        video_url = await image2videoInKeling(
+            image, video_positive_prompt, video_negative_prompt, state.video_fragment_duration)
         # 下载视频
 
         if video_url:
@@ -131,10 +141,10 @@ async def generate_video_with_prompt(state: GenerateVideoState, config):
                 local_video_path = os.path.join(
                     temp_dir, f"video_{video_number}.mp4")
 
-            video_fragments.append(local_video_path)
             video_data = requests.get(video_url).content
             with open(local_video_path, "wb") as f:
                 f.write(video_data)
+            video_fragment.video_url = local_video_path
             video_number += 1
         else:
             logger.error("生成视频失败")
@@ -158,37 +168,73 @@ async def video_stitching(state: GenerateVideoState, config):
     for video_fragment in state.video_fragments:
         video_list.append(video_fragment.video_url)
     output_path = os.path.join(temp_dir, "merged_output.mp4")
-    output_videos = []
-    output_videos.append(concatenate_videos_from_urls(
-        video_list, output_path=output_path))
-    return {"output_videos": output_videos}
+
+    state.output_video.video_url_v1 = concatenate_videos_from_urls(
+        video_list, output_path=output_path)
+    return {"output_video": state.output_video}
+
+
+async def generate_subtitle_text(state: GenerateVideoState, config):
+    """
+    根据商品信息，视频时长，生成字幕文案
+    """
+
+    pass
+
+
+async def generate_audio(state: GenerateVideoState, config):
+    """
+    生成音频
+    """
+    pass
 
 
 async def add_subtitles(state: GenerateVideoState, config):
     """
-    添加字幕
+    添加字幕(文案)
     """
+    # 先根据商品信息，视频时长，生成文案
+
     pass
 
 
 def get_app():
     graph = StateGraph(GenerateVideoState)
-    graph.add_node("generate_video_script",
-                   generate_video_script)
-    graph.add_node("generate_video_script", generate_video_with_prompt)
-    graph.add_edge(START, "generate_video_script")
-    graph.add_edge("generate_video_script",
+
+    graph.add_node("generate_video_fragments",
+                   generate_video_fragments)
+    graph.add_node("generate_video_prompt",
+                   generate_video_prompt)
+    graph.add_node("generate_video_with_prompt",
+                   generate_video_with_prompt)
+    graph.add_node("evaluate_video_fragments",
+                   evaluate_video_fragments)
+    graph.add_node("video_stitching",
+                   video_stitching)
+    graph.add_node("add_subtitles",
+                   add_subtitles)
+    graph.add_edge(START, "generate_video_fragments")
+    graph.add_edge("generate_video_fragments",
+                   "generate_video_prompt")
+    graph.add_edge("generate_video_prompt",
                    "generate_video_with_prompt")
-    graph.add_edge("generate_video_with_prompt", END)
+    graph.add_edge("generate_video_with_prompt",
+                   "evaluate_video_fragments")
+    graph.add_edge("evaluate_video_fragments",
+                   "video_stitching")
+    graph.add_edge("video_stitching",
+                   "add_subtitles")
+    graph.add_edge("add_subtitles", END)
+
     memory = MemorySaver()
     app = graph.compile(checkpointer=memory)
     return app
 
 
-async def ainvoke_ad_agent_workflow(product: str, model_images: list, video_duration: int):
+async def ainvoke_ad_agent_workflow(product: str, model_images: list, video_fragment_duration: int):
     with temp_dir() as temp_dir_path:
         app = get_app()
         configuration: RunnableConfig = {"configurable": {
             "thread_id": "1", "temp_dir": temp_dir_path}}
-        result = await app.ainvoke({"product": product, "model_images": model_images, "video_duration": video_duration}, config=configuration)
+        result = await app.ainvoke({"product": product, "model_images": model_images, "video_fragment_duration": video_fragment_duration}, config=configuration)
         return result

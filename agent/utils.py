@@ -108,7 +108,6 @@ def judge_file_exist(file_path, download_dir, download_name):
     parsed_url = urllib.parse.urlparse(file_path)
     if parsed_url.scheme in ["http", "https", "ftp"]:  # 判断是否为有效的 URL
         result["type"] = "url"
-
         # 下载文件到指定目录
         try:
             # 提取文件名
@@ -142,18 +141,3 @@ def judge_file_exist(file_path, download_dir, download_name):
         result["path"] = None
 
     return result
-
-
-def share_file_in_oss(file_path, oss_path, bucket: str, expires: float) -> str:
-    # 上传文件到oss
-    minio_endpoint = conf.get("minio_endpoint")
-    minio_access_key = conf.get("minio_access_key")
-    minio_secret_key = conf.get("minio_secret_key")
-    minio_client = MinioClient(
-        minio_endpoint, minio_access_key, minio_secret_key)
-
-    # 判断bucket是否存在
-    minio_client.make_bucket(bucket)
-    minio_client.upload_file(bucket, oss_path, file_path)
-    url = minio_client.share_file(bucket, oss_path, expires)
-    return url

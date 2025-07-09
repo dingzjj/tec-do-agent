@@ -212,6 +212,36 @@ class Config:
 
         return path
 
+    def get_url(self, key: str, default: str = "") -> str:
+        """
+        获取URL配置值，如果URL中包含local_url配置项，则将其替换为localhost
+
+        Args:
+            key: 配置键名，支持点号分隔的嵌套键
+            default: 默认URL值
+
+        Returns:
+            处理后的URL字符串
+
+        Examples:
+            config.get_url("api_base_url", "http://localhost:8000")  # 返回处理后的URL
+            config.get_url("minio.endpoint", "http://minio:9000")  # 返回处理后的MinIO端点
+        """
+        # 获取原始URL
+        url = self.get(key, default)
+
+        if not url or not isinstance(url, str):
+            return default
+
+        # 获取local_url配置
+        local_url = self.get("local_url")
+
+        # 如果local_url存在且URL中包含local_url，则替换为localhost
+        if local_url and local_url in url:
+            url = url.replace(local_url, "localhost")
+
+        return url
+
     def ensure_path_exists(self, key: str, default: str = "") -> str:
         """
         确保路径存在，如果不存在则创建目录
