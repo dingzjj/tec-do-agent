@@ -1,8 +1,6 @@
 from agent.llm import image2videoInKeling
 from agent.ad_agent.utils import concatenate_videos_from_urls
 from agent.utils import temp_dir
-from agent.ad_agent.prompt import CREATE_VIDEO_BY_IMAGE_SYSTEM_PROMPT_en, CREATE_VIDEO_BY_IMAGE_RESPONSE_SCHEMA, CREATE_VIDEO_BY_IMAGE_HUMAN_PROMPT_en
-from agent.ad_agent.prompt import CREATE_VIDEO_PROMPT_LIMIT_ABOUT_MOVEMENT_en
 from langchain_core.runnables import RunnableConfig
 from config import conf
 from config import logger
@@ -14,20 +12,21 @@ import json
 import os
 import mimetypes
 from agent.llm import create_gemini_generative_model
-from agent.ad_agent.prompt import ANALYSE_IMAGE_SYSTEM_PROMPT_en, ANALYSE_IMAGE_RESPONSE_SCHEMA, ANALYSE_IMAGE_HUMAN_PROMPT_en
 from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-
 from vertexai.generative_models import GenerativeModel, Part, GenerationConfig
-from agent.ad_agent.prompt import CREATE_VIDEO_PROMPT_SYSTEM_PROMPT_en, CREATE_VIDEO_PROMPT_HUMAN_PROMPT_en
+
+# v1表示纯视频，v2表示视频+音频，v3表示视频+字幕+音频
 
 
 class VideoFragment(BaseModel):
     model_image: str = Field(default="", description="模特图片")
     video_positive_prompt: str = Field(default="", description="视频正向prompt")
     video_negative_prompt: str = Field(default="", description="视频负向prompt")
-    video_url: str = Field(default="", description="视频path(in local)")
+    video_url_v1: str = Field(default="", description="视频path(in local)")
+    video_url_v2: str = Field(default="", description="视频path(in local)")
+    video_url_v3: str = Field(default="", description="视频path(in local)")
     video_duration: int = Field(default=5, description="视频时长")
     video_script: str = Field(default="", description="视频脚本")
 
@@ -144,7 +143,7 @@ async def generate_video_with_prompt(state: GenerateVideoState, config):
             video_data = requests.get(video_url).content
             with open(local_video_path, "wb") as f:
                 f.write(video_data)
-            video_fragment.video_url = local_video_path
+            video_fragment.video_url_v1 = local_video_path
             video_number += 1
         else:
             logger.error("生成视频失败")
@@ -166,7 +165,7 @@ async def video_stitching(state: GenerateVideoState, config):
 
     video_list = []
     for video_fragment in state.video_fragments:
-        video_list.append(video_fragment.video_url)
+        video_list.append(video_fragment.video_url_v1)
     output_path = os.path.join(temp_dir, "merged_output.mp4")
 
     state.output_video.video_url_v1 = concatenate_videos_from_urls(
@@ -174,18 +173,12 @@ async def video_stitching(state: GenerateVideoState, config):
     return {"output_video": state.output_video}
 
 
-async def generate_subtitle_text(state: GenerateVideoState, config):
+async def generate_audio_text_and_audio(state: GenerateVideoState, config):
     """
-    根据商品信息，视频时长，生成字幕文案
+    根据商品信息，模特图片（图片信息），视频时长，语速(限制字数)，生成 字幕文案 + 音频，此处需要根据音频效果对文案进行不断调整
     """
+    # 每个片段一段话（视频时长确定）
 
-    pass
-
-
-async def generate_audio(state: GenerateVideoState, config):
-    """
-    生成音频
-    """
     pass
 
 
@@ -213,6 +206,7 @@ def get_app():
                    video_stitching)
     graph.add_node("add_subtitles",
                    add_subtitles)
+
     graph.add_edge(START, "generate_video_fragments")
     graph.add_edge("generate_video_fragments",
                    "generate_video_prompt")

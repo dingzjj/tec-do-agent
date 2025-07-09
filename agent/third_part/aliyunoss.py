@@ -39,4 +39,4 @@ def share_file_in_oss(local_file_path, object_name, expires: float = 7):
         public_url = f"https://{bucket_name}.{endpoint}/{object_name}"
         return public_url
     else:
-        return None
+        raise Exception(f"上传失败，状态码: {result.status}")

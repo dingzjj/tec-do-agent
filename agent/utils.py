@@ -98,9 +98,18 @@ def temp_dir():
     #  会递归地删除目录及其所有内容
     shutil.rmtree(temp_dir_path)
 
+
+def judge_file_local_or_url(file_path):
+    parsed_url = urllib.parse.urlparse(file_path)
+    if parsed_url.scheme in ['http', 'https', 'ftp', 'file']:
+        return "url"
+    elif os.path.isfile(file_path):
+        return "local"
+    else:
+        raise ValueError(f"Invalid file path: {file_path}")
+
+
 # 如何判断是本地文件还是url,假如是本地文件，判断文件是否存在。假如是url则下载到download_dir下
-
-
 def judge_file_exist(file_path, download_dir, download_name):
     result = {"type": None, "exist": False, "path": file_path}
 
