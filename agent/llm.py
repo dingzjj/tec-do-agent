@@ -101,7 +101,7 @@ def generate_embedding_with_openai(text: str) -> list[float]:
     return query_vectors[0]
 
 
-def create_gemini_generative_model(system_prompt: str, response_schema: dict):
+def get_gemini_multimodal_model(system_prompt: str, response_schema: dict):
     credentials = service_account.Credentials.from_service_account_file(
         filename=conf.get("gemini_conf"))
     vertexai.init(project='ca-biz-vypngh-y97n', credentials=credentials)
@@ -178,7 +178,18 @@ def i2v_with_tongyi(img_url, prompt, resolution, duration, prompt_extend=True):
                      (rsp.status_code, rsp.code, rsp.message))
 
 
-async def image2videoInKeling(img_path, positive_prompt, negative_prompt,  duration, model: str = "kling-v2-1-master"):
+async def simulate_image2videoInKeling(img_path, positive_prompt, negative_prompt,  duration, model: str = "kling-v2-1"):
+    if img_path == "/root/dzj/adm_agent/temp/m1.jpg":
+        return "/root/dzj/adm_agent/temp/92d4af20-a26f-4979-94cc-523a07807ee6/video_1.mp4"
+    elif img_path == "/root/dzj/adm_agent/temp/m2.jpg":
+        return "/root/dzj/adm_agent/temp/92d4af20-a26f-4979-94cc-523a07807ee6/video_2.mp4"
+    elif img_path == "/root/dzj/adm_agent/temp/m3.jpg":
+        return "/root/dzj/adm_agent/temp/92d4af20-a26f-4979-94cc-523a07807ee6/video_3.mp4"
+    else:
+        return None
+
+
+async def image2videoInKeling(img_path, positive_prompt, negative_prompt,  duration, model: str = "kling-v2-1"):
     # 使用keling的api生成视频，最终返回一个url，url是视频的地址
 
     http_client = httpx.Client(timeout=httpx.Timeout(
@@ -186,11 +197,10 @@ async def image2videoInKeling(img_path, positive_prompt, negative_prompt,  durat
     KLING_API_KEY = conf.get("KLING_API_KEY")
     KLING_SECRET = conf.get("KLING_SECRET")
     KLING_API_BASE_URL = conf.get("KLING_API_BASE_URL")
-#  TODO 将图片上传到图床(对象存储服务OSS)
     image_url = share_file_in_oss(img_path, f"{uuid.uuid4()}.jpg")
     payload = {
         # kling-v1, kling-v1-5, kling-v1-6, kling-v2-master, kling-v2-1, kling-v2-1-master
-        "model_name": model,
+        "model": model,
         "mode": "pro",  # std 标准，pro 增强
         "image": image_url,
         "prompt": positive_prompt,

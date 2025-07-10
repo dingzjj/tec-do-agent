@@ -99,6 +99,18 @@ def temp_dir():
     shutil.rmtree(temp_dir_path)
 
 
+def get_url_data(url):
+    """
+    根据url获取数据，如果是本地文件，则返回文件内容，如果是url则返回url内容
+    """
+    if judge_file_local_or_url(url) == "url":
+        return requests.get(url).content
+    elif judge_file_local_or_url(url) == "local":
+        return open(url, "rb").read()
+    else:
+        raise ValueError(f"Invalid file path: {url}")
+
+
 def judge_file_local_or_url(file_path):
     parsed_url = urllib.parse.urlparse(file_path)
     if parsed_url.scheme in ['http', 'https', 'ftp', 'file']:

@@ -27,6 +27,8 @@ def download_video(url, filename):
 
 
 def concatenate_videos_from_urls(video_urls, output_path="output.mp4"):
+    if len(video_urls) == 0:
+        raise Exception("视频列表为空")
     clips = []
     with temp_dir() as temp_dir_path:
         for i, url in enumerate(video_urls):
