@@ -180,11 +180,11 @@ def i2v_with_tongyi(img_url, prompt, resolution, duration, prompt_extend=True):
 
 async def simulate_image2videoInKeling(img_path, positive_prompt, negative_prompt,  duration, model: str = "kling-v2-1"):
     if img_path == "/root/dzj/adm_agent/temp/m1.jpg":
-        return "/root/dzj/adm_agent/temp/92d4af20-a26f-4979-94cc-523a07807ee6/video_1.mp4"
+        return "/root/dzj/adm_agent/temp/video_1.mp4"
     elif img_path == "/root/dzj/adm_agent/temp/m2.jpg":
-        return "/root/dzj/adm_agent/temp/92d4af20-a26f-4979-94cc-523a07807ee6/video_2.mp4"
+        return "/root/dzj/adm_agent/temp/video_2.mp4"
     elif img_path == "/root/dzj/adm_agent/temp/m3.jpg":
-        return "/root/dzj/adm_agent/temp/92d4af20-a26f-4979-94cc-523a07807ee6/video_3.mp4"
+        return "/root/dzj/adm_agent/temp/video_3.mp4"
     else:
         return None
 

@@ -96,7 +96,8 @@ def temp_dir():
     os.makedirs(temp_dir_path, exist_ok=True)
     yield temp_dir_path
     #  会递归地删除目录及其所有内容
-    shutil.rmtree(temp_dir_path)
+    # shutil.rmtree(temp_dir_path)
+    logger.info(f"temp_dir_path: {temp_dir_path}")
 
 
 def get_url_data(url):

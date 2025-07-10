@@ -1,3 +1,4 @@
+from pydub.utils import mediainfo
 from agent.utils import judge_file_exist
 from agent.utils import temp_dir
 from config import logger
@@ -50,3 +51,11 @@ def concatenate_videos_from_urls(video_urls, output_path="output.mp4"):
         final_clip.write_videofile(
             output_path, codec="libx264", audio_codec="aac")
         return output_path
+
+
+def get_audio_duration(file_path: str) -> float:
+    # 获取音频文件的元数据
+    audio_info = mediainfo(file_path)
+    # 提取时长（以秒为单位）
+    duration = float(audio_info['duration'])
+    return duration
