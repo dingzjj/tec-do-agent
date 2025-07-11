@@ -148,7 +148,7 @@ async def generate_video_with_prompt(state: GenerateVideoState, config):
         image = video_fragment.model_image
         video_positive_prompt = video_fragment.video_positive_prompt
         video_negative_prompt = video_fragment.video_negative_prompt
-        video_url = await simulate_image2videoInKeling(
+        video_url = await image2videoInKeling(
             image, video_positive_prompt, video_negative_prompt, state.video_fragment_duration)
         # 下载视频
         if video_url:
