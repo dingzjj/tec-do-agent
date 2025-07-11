@@ -224,3 +224,33 @@ def burn_subtitles_to_video_individuation(
         logger.error("stdout:", e.stdout.decode() if e.stdout else None)
         logger.error("stderr:", e.stderr.decode() if e.stderr else None)
         raise e
+
+
+def extract_audio(video_file: str, output_audio_path: str, audio_type: str = "mp3") -> str:
+    """
+    从指定视频文件中提取音频，并保存为 .wav 格式到指定输出目录。
+
+    视频文件名中的扩展名会被去掉，并替换为 `.wav` 作为音频输出文件名。
+    示例：输入 `video.mp4`，输出 `video.wav`。
+
+    Parameters:
+        video_file (str): 视频文件的完整路径（支持常见格式如 mp4、avi 等）。
+        output_audio_path (str): 音频文件要保存的目标路径。
+
+    Returns:
+        str: 提取后的音频文件的完整路径（WAV 格式）
+    """
+    try:
+        # 使用 ffmpeg 提取音频并转为 WAV 格式
+        (
+            ffmpeg.input(video_file)
+            .output(output_audio_path, format=audio_type)
+            .run(overwrite_output=True)
+        )
+
+        return output_audio_path
+
+    except ffmpeg.Error as e:
+        logger.error("❌ FFmpeg 错误:", e.stderr.decode()
+                     if e.stderr else "无详细错误信息")
+        raise e

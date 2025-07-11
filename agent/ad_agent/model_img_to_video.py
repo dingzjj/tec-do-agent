@@ -155,8 +155,6 @@ async def generate_video_with_prompt(state: GenerateVideoState, config):
             # 假如当前有文件则跳过
             local_video_path = os.path.join(
                 temp_dir, video_fragment.id, "video_url_v1.mp4")
-            # 直到video_number对应的文件不存在
-
             video_data = get_url_data(video_url)
             with open(local_video_path, "wb") as f:
                 f.write(video_data)
@@ -336,9 +334,9 @@ def get_app():
     return app
 
 
-async def ainvoke_ad_agent_workflow(product: str, product_info: str, model_images: list, video_fragment_duration: int, video_output_path: str):
+async def ainvoke_m2v_workflow(product: str, product_info: str, model_images: list, video_fragment_duration: int, video_output_path: str):
     """
-    调用ad_agent工作流
+    调用m2v_workflow工作流
     Args:
         product: 商品名称
         product_info: 商品信息
