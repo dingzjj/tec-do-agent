@@ -44,6 +44,10 @@ class Config:
             logging.error(f"保存配置文件时发生错误: {e}")
             return False
 
+    def get_root_dir(self) -> str:
+        """获取项目根目录"""
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     def get(self, key: str, default: Any = None, is_path: bool = False) -> Any:
         """
         获取配置值，支持嵌套配置访问,假如返回的是路径，则会返回绝对路径（父目录+配置中的路径）

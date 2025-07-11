@@ -1,3 +1,4 @@
+from agent.third_part.ffmpeg import burn_subtitles_to_video_individuation
 from agent.third_part.minio import MinioClient
 import urllib.parse
 import os
@@ -10,6 +11,7 @@ import time
 import requests
 from bs4 import BeautifulSoup
 from config import logger
+from agent.third_part.openai_whisper import transcribe_audio_to_words, convert_srt_file, generate_ass_with_default_config
 
 
 def crawl_with_requests(url, selector, is_deep=False):
@@ -163,3 +165,24 @@ def judge_file_exist(file_path, download_dir, download_name):
         result["path"] = None
 
     return result
+
+
+def add_subtitles_with_ffmpeg_and_openai_whisper(audio_path: str, video_path: str, output_dir: str, output_path: str, font_name: str):
+    """
+    使用ffmpeg和openai_whisper添加字幕(audio -> srt -> json->ass ->video)
+    Args:
+        audio_path: 音频文件路径
+        video_path: 视频文件路径
+        output_dir: 输出目录(暂存路径，用于存储srt和json文件)
+        output_path: 输出视频文件路径
+    """
+    # 1. 将音频转成srt
+    srt_file_path = transcribe_audio_to_words(audio_path, output_dir)
+    # 2. 将srt转成json
+    json_file_path = convert_srt_file(srt_file_path, output_dir)
+    # 3. 将json转成ass
+    ass_file_path = generate_ass_with_default_config(
+        video_path, json_file_path, output_dir)
+    # 4. 将ass转成video
+    burn_subtitles_to_video_individuation(
+        video_path, ass_file_path, output_path, font_name)

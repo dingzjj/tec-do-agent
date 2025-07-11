@@ -1,4 +1,5 @@
 
+from agent.utils import add_subtitles_with_ffmpeg_and_openai_whisper
 import uuid
 from agent.third_part.ffmpeg import merge_video_audio
 from agent.ad_agent.utils import get_audio_duration
@@ -223,10 +224,25 @@ async def generate_audio(state: GenerateVideoState, config):
             audio_speed += 0.05
             text_to_speech_with_elevenlabs(conf.get(
                 "elevenlabs_api_key"), video_fragment.video_script, audio_file_path, "Laura", audio_speed)
-
+            audio_duration = get_audio_duration(audio_file_path)
         merge_video_audio(video_fragment.video_url_v1, audio_file_path,
                           video_url_v2, 1, None, None)
         video_fragment.video_url_v2 = video_url_v2
+    return {"video_fragments": state.video_fragments}
+
+
+async def add_subtitles(state: GenerateVideoState, config):
+    """
+    为每个视频片段添加字幕
+    """
+    temp_dir = config.get("configurable").get("temp_dir")
+    for video_fragment in state.video_fragments:
+        video_url_v3 = os.path.join(
+            temp_dir, video_fragment.id, "video_url_v3.mp4")
+        output_dir = os.path.join(temp_dir, video_fragment.id)
+        add_subtitles_with_ffmpeg_and_openai_whisper(
+            video_fragment.audio_url, video_fragment.video_url_v2, output_dir, video_url_v3, "Montserrat-Italic-VariableFont_wght")
+        video_fragment.video_url_v3 = video_url_v3
     return {"video_fragments": state.video_fragments}
 
 
@@ -243,12 +259,22 @@ async def video_stitching(state: GenerateVideoState, config):
     视频拼接
     """
     temp_dir = config.get("configurable").get("temp_dir")
-    video_list = []
+    video_v1_list = []
+    video_v2_list = []
+    video_v3_list = []
     for video_fragment in state.video_fragments:
-        video_list.append(video_fragment.video_url_v1)
-    output_path = os.path.join(temp_dir, "merged_output.mp4")
+        video_v1_list.append(video_fragment.video_url_v1)
+        video_v2_list.append(video_fragment.video_url_v2)
+        video_v3_list.append(video_fragment.video_url_v3)
+    video_url_v1 = os.path.join(temp_dir, "video_url_v1.mp4")
+    video_url_v2 = os.path.join(temp_dir, "video_url_v2.mp4")
+    video_url_v3 = os.path.join(temp_dir, "video_url_v3.mp4")
     state.output_video.video_url_v1 = concatenate_videos_from_urls(
-        video_list, output_path=output_path)
+        video_v1_list, output_path=video_url_v1)
+    state.output_video.video_url_v2 = concatenate_videos_from_urls(
+        video_v2_list, output_path=video_url_v2)
+    state.output_video.video_url_v3 = concatenate_videos_from_urls(
+        video_v3_list, output_path=video_url_v3)
     return {"output_video": state.output_video}
 
 
