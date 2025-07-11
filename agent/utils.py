@@ -92,14 +92,29 @@ def crawl_with_requests_single(url, selector):
 
 
 @contextmanager
-def temp_dir():
+def create_dir(name):
     temp_dir = conf.get_path("temp_dir")
-    temp_dir_path = os.path.join(temp_dir, str(uuid.uuid4()))
+    if name:
+        temp_dir_path = os.path.join(temp_dir, name)
+    else:
+        temp_dir_path = os.path.join(temp_dir, str(uuid.uuid4()))
     os.makedirs(temp_dir_path, exist_ok=True)
     yield temp_dir_path
     #  会递归地删除目录及其所有内容
     # shutil.rmtree(temp_dir_path)
     logger.info(f"temp_dir_path: {temp_dir_path}")
+
+
+@contextmanager
+def temp_dir(name):
+    temp_dir = conf.get_path("temp_dir")
+    if name:
+        temp_dir_path = os.path.join(temp_dir, name)
+    else:
+        temp_dir_path = os.path.join(temp_dir, str(uuid.uuid4()))
+    os.makedirs(temp_dir_path, exist_ok=True)
+    yield temp_dir_path
+    shutil.rmtree(temp_dir_path)
 
 
 def get_url_data(url):

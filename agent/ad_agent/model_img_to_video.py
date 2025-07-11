@@ -1,4 +1,6 @@
 
+from shutil import copyfile
+from agent.utils import create_dir
 from agent.utils import add_subtitles_with_ffmpeg_and_openai_whisper
 import uuid
 from agent.third_part.ffmpeg import merge_video_audio
@@ -64,8 +66,8 @@ class GenerateVideoState(BaseModel):
     product: str = Field(description="商品名称")
     product_info: str = Field(description="商品信息")
     model_images: list = Field(description="模特图片（带商品）")
+    video_output_path: str = Field(description="视频输出path")
     video_fragment_duration: int = 5
-    is_add_beginning: bool = False
     video_fragments: list[VideoFragment] = []
     output_video: OutputVideo = OutputVideo()
 
@@ -177,6 +179,7 @@ async def generate_audio_text(state: GenerateVideoState, config):
         "required": []
     }
     fragment_info = ""
+    video_fragment_duration = state.video_fragment_duration
     for i, video_fragment in enumerate(state.video_fragments):
         fragment_info += f"( fragment{i}:{video_fragment.model_image_info})\n"
         CREATE_AUDIO_TEXT_RESPONSE_SCHEMA["properties"][f"fragment{i}"] = {
@@ -184,7 +187,8 @@ async def generate_audio_text(state: GenerateVideoState, config):
         CREATE_AUDIO_TEXT_RESPONSE_SCHEMA["required"].append(
             f"fragment{i}")
     gemini_generative_model = get_gemini_multimodal_model(
-        system_prompt=CREATE_AUDIO_TEXT_SYSTEM_PROMPT_en,
+        system_prompt=CREATE_AUDIO_TEXT_SYSTEM_PROMPT_en.format(
+            word_min_count=(video_fragment_duration-1)*3, word_max_count=(video_fragment_duration-1)*5),
         response_schema=CREATE_AUDIO_TEXT_RESPONSE_SCHEMA)
 
     response = gemini_generative_model.generate_content(
@@ -204,31 +208,36 @@ async def generate_audio(state: GenerateVideoState, config):
     """
     根据字幕文案，生成音频
     """
-    temp_dir = config["configurable"]["temp_dir"]
-    for i, video_fragment in enumerate(state.video_fragments):
-        audio_file_path = os.path.join(
-            temp_dir, video_fragment.id, "audio.mp3")
-        video_url_v2 = os.path.join(
-            temp_dir, video_fragment.id, "video_url_v2.mp4")
-        audio_speed = 1.0
+    try:
+        temp_dir = config["configurable"]["temp_dir"]
+        for i, video_fragment in enumerate(state.video_fragments):
+            audio_file_path = os.path.join(
+                temp_dir, video_fragment.id, "audio.mp3")
+            video_url_v2 = os.path.join(
+                temp_dir, video_fragment.id, "video_url_v2.mp4")
+            audio_speed = 1.0
 
-        text_to_speech_with_elevenlabs(
-            conf.get("elevenlabs_api_key"), video_fragment.video_script, audio_file_path, "Laura", audio_speed)
-        video_fragment.audio_url = audio_file_path
-        # 音频时长必须小于视频时长，否则重新生成字幕文案
-        audio_duration = get_audio_duration(audio_file_path)
-        while audio_duration > video_fragment.video_duration:
+            text_to_speech_with_elevenlabs(
+                conf.get("elevenlabs_api_key"), video_fragment.video_script, audio_file_path, "Laura", audio_speed)
+            video_fragment.audio_url = audio_file_path
             # 音频时长必须小于视频时长，否则重新生成字幕文案
-            # 方法一：调口音速度
-            # 方法二：调字幕 TODO 口音速度在0.7-1.2之间，1.2之后超过则需要重新生成字幕文案
-            audio_speed += 0.05
-            text_to_speech_with_elevenlabs(conf.get(
-                "elevenlabs_api_key"), video_fragment.video_script, audio_file_path, "Laura", audio_speed)
             audio_duration = get_audio_duration(audio_file_path)
-        merge_video_audio(video_fragment.video_url_v1, audio_file_path,
-                          video_url_v2, 1, None, None)
-        video_fragment.video_url_v2 = video_url_v2
-    return {"video_fragments": state.video_fragments}
+            while audio_duration > video_fragment.video_duration:
+                # 音频时长必须小于视频时长，否则重新生成字幕文案
+                # 方法一：调口音速度
+                # 方法二：调字幕 TODO 口音速度在0.7-1.2之间，1.2之后超过则需要重新生成字幕文案
+                audio_speed += 0.05
+                text_to_speech_with_elevenlabs(conf.get(
+                    "elevenlabs_api_key"), video_fragment.video_script, audio_file_path, "Laura", audio_speed)
+                audio_duration = get_audio_duration(audio_file_path)
+            merge_video_audio(video_fragment.video_url_v1, audio_file_path,
+                              video_url_v2, 1, None, None)
+            video_fragment.video_url_v2 = video_url_v2
+        return {"video_fragments": state.video_fragments}
+    except Exception as e:
+        # 采取方案二：调字幕 TODO
+        logger.error(f"生成音频失败: {e}")
+        raise e
 
 
 async def add_subtitles(state: GenerateVideoState, config):
@@ -278,6 +287,14 @@ async def video_stitching(state: GenerateVideoState, config):
     return {"output_video": state.output_video}
 
 
+async def save_video(state: GenerateVideoState, config):
+    """
+    保存视频
+    """
+    video_output_path = state.video_output_path
+    copyfile(state.output_video.video_url_v3, video_output_path)
+
+
 def get_app():
     graph = StateGraph(GenerateVideoState)
 
@@ -293,10 +310,14 @@ def get_app():
                    generate_audio_text)
     graph.add_node("generate_audio",
                    generate_audio)
+    graph.add_node("add_subtitles",
+                   add_subtitles)
     graph.add_node("evaluate_video_fragments",
                    evaluate_video_fragments)
     graph.add_node("video_stitching",
                    video_stitching)
+    graph.add_node("save_video",
+                   save_video)
 
     graph.add_edge(START, "generate_video_fragments")
     graph.add_edge("generate_video_fragments", "generate_video_script")
@@ -304,19 +325,31 @@ def get_app():
     graph.add_edge("generate_video_prompt", "generate_video_with_prompt")
     graph.add_edge("generate_video_with_prompt", "generate_audio_text")
     graph.add_edge("generate_audio_text", "generate_audio")
-    graph.add_edge("generate_audio", "evaluate_video_fragments")
+    graph.add_edge("generate_audio", "add_subtitles")
+    graph.add_edge("add_subtitles", "evaluate_video_fragments")
     graph.add_edge("evaluate_video_fragments", "video_stitching")
-    graph.add_edge("video_stitching", END)
+    graph.add_edge("video_stitching", "save_video")
+    graph.add_edge("save_video", END)
 
     memory = MemorySaver()
     app = graph.compile(checkpointer=memory)
     return app
 
 
-async def ainvoke_ad_agent_workflow(product: str, product_info: str, model_images: list, video_fragment_duration: int):
-    with temp_dir() as temp_dir_path:
+async def ainvoke_ad_agent_workflow(product: str, product_info: str, model_images: list, video_fragment_duration: int, video_output_path: str):
+    """
+    调用ad_agent工作流
+    Args:
+        product: 商品名称
+        product_info: 商品信息
+        model_images: 模特图片
+        video_fragment_duration: 视频片段时长
+        video_output_path: 视频输出 -> video_v3_url.mp4
+    """
+    with create_dir(name=None) as temp_dir_path:
         app = get_app()
         configuration: RunnableConfig = {"configurable": {
             "thread_id": "1", "temp_dir": temp_dir_path}}
-        result = await app.ainvoke({"product": product, "product_info": product_info, "model_images": model_images,  "video_fragment_duration": video_fragment_duration}, config=configuration)
+        result = await app.ainvoke({"product": product, "product_info": product_info, "model_images": model_images,
+                                    "video_fragment_duration": video_fragment_duration, "video_output_path": video_output_path}, config=configuration)
         return result

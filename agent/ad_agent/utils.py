@@ -27,11 +27,19 @@ def download_video(url, filename):
     return filename
 
 
-def concatenate_videos_from_urls(video_urls, output_path="output.mp4"):
+def concatenate_videos_from_urls(video_urls, output_path):
+    """
+    将视频列表拼接成一个视频，并保存到output_path
+    Args:
+        video_urls: 视频列表(可以为本地pah，也可以为url)
+        output_path: 输出视频路径
+    Returns:
+        str: 输出视频路径
+    """
     if len(video_urls) == 0:
         raise Exception("视频列表为空")
     clips = []
-    with temp_dir() as temp_dir_path:
+    with temp_dir(name=None) as temp_dir_path:
         for i, url in enumerate(video_urls):
             # 判断是否是本地文件，是本地文件的话，判断文件是否存在，如果是url则下载到本地的临时目录中
             downloaded = judge_file_exist(

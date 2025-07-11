@@ -213,7 +213,6 @@ class Config:
 
         if create_if_not_exists and path:
             os.makedirs(path, exist_ok=True)
-
         return path
 
     def get_url(self, key: str, default: str = "") -> str:
